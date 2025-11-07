@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Calendar, Tag, Heart, Bookmark, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
+import { toast } from "sonner";
 
 // Mock notes data - in a real app, this would come from an API
 const mockNotes = [
@@ -140,8 +141,12 @@ const NoteDetail = () => {
   
   const note = allNotes.find((n) => n.id === id);
   
+  // Load bookmarked status from localStorage
+  const bookmarkedIds = JSON.parse(localStorage.getItem("bookmarkedNotes") || "[]");
   const [isLiked, setIsLiked] = useState(note?.isLiked || false);
-  const [isBookmarked, setIsBookmarked] = useState(note?.isBookmarked || false);
+  const [isBookmarked, setIsBookmarked] = useState(
+    note?.id ? bookmarkedIds.includes(note.id) : false
+  );
   const [likes, setLikes] = useState(note?.likes || 0);
 
   if (!note) {
@@ -169,7 +174,16 @@ const NoteDetail = () => {
   };
 
   const handleBookmark = () => {
-    setIsBookmarked(!isBookmarked);
+    const newIsBookmarked = !isBookmarked;
+    setIsBookmarked(newIsBookmarked);
+    
+    const updatedBookmarks = newIsBookmarked
+      ? [...bookmarkedIds, note.id]
+      : bookmarkedIds.filter((id: string) => id !== note.id);
+    
+    localStorage.setItem("bookmarkedNotes", JSON.stringify(updatedBookmarks));
+    toast.success(newIsBookmarked ? "Note saved!" : "Note removed from saved");
+    window.dispatchEvent(new Event("bookmarksUpdated"));
   };
 
   return (

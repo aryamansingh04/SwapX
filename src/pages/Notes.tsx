@@ -49,6 +49,9 @@ const Notes = () => {
 
   // Load notes from localStorage and merge with mock data
   const [notes, setNotes] = useState<Note[]>(() => {
+    // Get bookmarked note IDs
+    const bookmarkedIds = JSON.parse(localStorage.getItem("bookmarkedNotes") || "[]");
+    
     // Get saved user notes from localStorage
     const savedNotes = localStorage.getItem("userNotes");
     let userNotes: Note[] = [];
@@ -59,6 +62,7 @@ const Notes = () => {
           ...note,
           createdAt: new Date(note.createdAt),
           updatedAt: new Date(note.updatedAt),
+          isBookmarked: bookmarkedIds.includes(note.id),
         }));
       } catch {
         userNotes = [];
@@ -81,7 +85,7 @@ const Notes = () => {
       },
       likes: 24,
       isLiked: false,
-      isBookmarked: false,
+      isBookmarked: bookmarkedIds.includes("1"),
     },
     {
       id: "2",
@@ -97,7 +101,7 @@ const Notes = () => {
       },
       likes: 18,
       isLiked: true,
-      isBookmarked: true,
+      isBookmarked: bookmarkedIds.includes("2"),
     },
     {
       id: "3",
@@ -113,7 +117,7 @@ const Notes = () => {
       },
       likes: 31,
       isLiked: false,
-      isBookmarked: false,
+      isBookmarked: bookmarkedIds.includes("3"),
     },
     {
       id: "4",
@@ -129,7 +133,7 @@ const Notes = () => {
       },
       likes: 42,
       isLiked: true,
-      isBookmarked: false,
+      isBookmarked: bookmarkedIds.includes("4"),
     },
     {
       id: "5",
@@ -145,7 +149,7 @@ const Notes = () => {
       },
       likes: 15,
       isLiked: false,
-      isBookmarked: true,
+      isBookmarked: bookmarkedIds.includes("5"),
     },
     {
       id: "6",
@@ -161,7 +165,7 @@ const Notes = () => {
       },
       likes: 28,
       isLiked: false,
-      isBookmarked: false,
+      isBookmarked: bookmarkedIds.includes("6"),
     },
     ];
 
@@ -177,8 +181,29 @@ const Notes = () => {
 
   // Save notes to localStorage whenever notes change
   useEffect(() => {
-    localStorage.setItem("userNotes", JSON.stringify(notes));
-  }, [notes]);
+    const userCreatedNotes = notes.filter(note => note.author.id === user?.id);
+    if (userCreatedNotes.length > 0) {
+      localStorage.setItem("userNotes", JSON.stringify(userCreatedNotes));
+    }
+  }, [notes, user?.id]);
+
+  // Update bookmark status when bookmarks change
+  useEffect(() => {
+    const handleBookmarkUpdate = () => {
+      const bookmarkedIds = JSON.parse(localStorage.getItem("bookmarkedNotes") || "[]");
+      setNotes((prevNotes) =>
+        prevNotes.map((note) => ({
+          ...note,
+          isBookmarked: bookmarkedIds.includes(note.id),
+        }))
+      );
+    };
+
+    window.addEventListener("bookmarksUpdated", handleBookmarkUpdate);
+    return () => {
+      window.removeEventListener("bookmarksUpdated", handleBookmarkUpdate);
+    };
+  }, []);
 
   const handleLike = (noteId: string) => {
     setNotes((prevNotes) =>
@@ -197,17 +222,28 @@ const Notes = () => {
   };
 
   const handleBookmark = (noteId: string) => {
+    const bookmarkedIds = JSON.parse(localStorage.getItem("bookmarkedNotes") || "[]");
+    const isBookmarked = bookmarkedIds.includes(noteId);
+    const updatedBookmarks = isBookmarked
+      ? bookmarkedIds.filter((id: string) => id !== noteId)
+      : [...bookmarkedIds, noteId];
+    
+    localStorage.setItem("bookmarkedNotes", JSON.stringify(updatedBookmarks));
+    
     setNotes((prevNotes) =>
       prevNotes.map((note) => {
         if (note.id === noteId) {
           return {
             ...note,
-            isBookmarked: !note.isBookmarked,
+            isBookmarked: !isBookmarked,
           };
         }
         return note;
       })
     );
+    
+    toast.success(isBookmarked ? "Note removed from saved" : "Note saved!");
+    window.dispatchEvent(new Event("bookmarksUpdated"));
   };
 
   const handleAddTag = () => {

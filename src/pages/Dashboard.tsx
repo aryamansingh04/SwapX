@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Star, Users, Award, TrendingUp, Calendar, Clock, UserPlus, UserCheck, UserX, Video, MapPin, Check, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -73,53 +73,128 @@ const Dashboard = () => {
     },
   ]);
 
-  // Mock connection requests
-  const [connectionRequestsReceived, setConnectionRequestsReceived] = useState([
-    {
-      id: "1",
-      userId: "4",
-      name: "Jordan Taylor",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jordan",
-      skill: "React Native",
-      message: "Would love to learn React Native from you!",
-      sentAt: new Date(Date.now() - 3600000), // 1 hour ago
-    },
-    {
-      id: "2",
-      userId: "5",
-      name: "Emma Wilson",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Emma",
-      skill: "UI/UX Design",
-      message: "Interested in learning design principles",
-      sentAt: new Date(Date.now() - 7200000), // 2 hours ago
-    },
-  ]);
+  // Load connection requests from localStorage
+  const [connectionRequestsReceived, setConnectionRequestsReceived] = useState(() => {
+    const saved = localStorage.getItem("connectionRequestsReceived");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.map((r: any) => ({
+          ...r,
+          sentAt: new Date(r.sentAt),
+        }));
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  });
 
-  const [connectionRequestsSent, setConnectionRequestsSent] = useState([
-    {
-      id: "1",
-      userId: "6",
-      name: "David Kim",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=David",
-      skill: "Machine Learning",
-      sentAt: new Date(Date.now() - 1800000), // 30 minutes ago
-      status: "pending" as "pending" | "accepted" | "rejected",
-    },
-    {
-      id: "2",
-      userId: "7",
-      name: "Lisa Anderson",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Lisa",
-      skill: "DevOps",
-      sentAt: new Date(Date.now() - 5400000), // 1.5 hours ago
-      status: "pending" as "pending" | "accepted" | "rejected",
-    },
-  ]);
+  const [connectionRequestsSent, setConnectionRequestsSent] = useState(() => {
+    const saved = localStorage.getItem("connectionRequestsSent");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.map((r: any) => ({
+          ...r,
+          sentAt: new Date(r.sentAt),
+          status: r.status || "pending",
+        }));
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  });
+
+  // Listen for connection request updates
+  useEffect(() => {
+    const handleUpdate = () => {
+      const savedReceived = localStorage.getItem("connectionRequestsReceived");
+      const savedSent = localStorage.getItem("connectionRequestsSent");
+      
+      if (savedReceived) {
+        try {
+          const parsed = JSON.parse(savedReceived);
+          setConnectionRequestsReceived(
+            parsed.map((r: any) => ({
+              ...r,
+              sentAt: new Date(r.sentAt),
+            }))
+          );
+        } catch {}
+      }
+      
+      if (savedSent) {
+        try {
+          const parsed = JSON.parse(savedSent);
+          setConnectionRequestsSent(
+            parsed.map((r: any) => ({
+              ...r,
+              sentAt: new Date(r.sentAt),
+              status: r.status || "pending",
+            }))
+          );
+        } catch {}
+      }
+    };
+
+    window.addEventListener("connectionRequestsUpdated", handleUpdate);
+    return () => {
+      window.removeEventListener("connectionRequestsUpdated", handleUpdate);
+    };
+  }, []);
 
   const handleAcceptConnection = (requestId: string) => {
     const request = connectionRequestsReceived.find(r => r.id === requestId);
     if (request) {
-      setConnectionRequestsReceived(prev => prev.filter(r => r.id !== requestId));
+      // Remove from received requests
+      const updatedReceived = connectionRequestsReceived.filter(r => r.id !== requestId);
+      setConnectionRequestsReceived(updatedReceived);
+      localStorage.setItem("connectionRequestsReceived", JSON.stringify(updatedReceived));
+
+      // Add to connections list
+      const connections = JSON.parse(localStorage.getItem("connections") || "[]");
+      if (!connections.includes(request.userId)) {
+        connections.push(request.userId);
+        localStorage.setItem("connections", JSON.stringify(connections));
+      }
+
+      // Update the sent request on the other side (if it exists)
+      const connectionRequestsSent = JSON.parse(localStorage.getItem("connectionRequestsSent") || "[]");
+      const updatedSent = connectionRequestsSent.map((r: any) =>
+        r.userId === request.userId ? { ...r, status: "accepted" } : r
+      );
+      localStorage.setItem("connectionRequestsSent", JSON.stringify(updatedSent));
+
+      // Create a notification
+      const notifications = JSON.parse(localStorage.getItem("notifications") || "[]");
+      const newNotification = {
+        id: Date.now().toString(),
+        title: "Connection Accepted",
+        message: `You are now connected with ${request.name}`,
+        type: "connection",
+        isRead: false,
+        timestamp: new Date().toISOString(),
+        link: `/chat/${request.userId}`,
+        userId: request.userId,
+      };
+      
+      // Mark related connection request notifications as read
+      const updatedNotifications = notifications.map((n: any) =>
+        n.type === "connection" && (n.userId === request.userId || n.message?.includes(request.name))
+          ? { ...n, isRead: true }
+          : n
+      );
+      updatedNotifications.unshift(newNotification);
+      const limitedNotifications = updatedNotifications.slice(0, 50);
+      localStorage.setItem("notifications", JSON.stringify(limitedNotifications));
+
+      // Trigger update events
+      window.dispatchEvent(new Event("connectionRequestsUpdated"));
+      window.dispatchEvent(new Event("chatsUpdated"));
+      window.dispatchEvent(new Event("notificationsUpdated"));
+
       toast.success(`Connection accepted! You can now chat with ${request.name}`);
       navigate(`/chat/${request.userId}`);
     }
@@ -128,7 +203,32 @@ const Dashboard = () => {
   const handleRejectConnection = (requestId: string) => {
     const request = connectionRequestsReceived.find(r => r.id === requestId);
     if (request) {
-      setConnectionRequestsReceived(prev => prev.filter(r => r.id !== requestId));
+      // Remove from received requests
+      const updatedReceived = connectionRequestsReceived.filter(r => r.id !== requestId);
+      setConnectionRequestsReceived(updatedReceived);
+      localStorage.setItem("connectionRequestsReceived", JSON.stringify(updatedReceived));
+
+      // Update the sent request on the other side (if it exists)
+      const connectionRequestsSent = JSON.parse(localStorage.getItem("connectionRequestsSent") || "[]");
+      const updatedSent = connectionRequestsSent.map((r: any) =>
+        r.userId === request.userId ? { ...r, status: "rejected" } : r
+      );
+      localStorage.setItem("connectionRequestsSent", JSON.stringify(updatedSent));
+
+      // Mark related connection request notifications as read
+      const notifications = JSON.parse(localStorage.getItem("notifications") || "[]");
+      const updatedNotifications = notifications.map((n: any) =>
+        n.type === "connection" && (n.userId === request.userId || n.message?.includes(request.name))
+          ? { ...n, isRead: true }
+          : n
+      );
+      localStorage.setItem("notifications", JSON.stringify(updatedNotifications));
+
+      // Trigger update events
+      window.dispatchEvent(new Event("connectionRequestsUpdated"));
+      window.dispatchEvent(new Event("chatsUpdated"));
+      window.dispatchEvent(new Event("notificationsUpdated"));
+
       toast.info(`Connection request from ${request.name} declined`);
     }
   };
@@ -136,7 +236,20 @@ const Dashboard = () => {
   const handleCancelConnectionRequest = (requestId: string) => {
     const request = connectionRequestsSent.find(r => r.id === requestId);
     if (request) {
-      setConnectionRequestsSent(prev => prev.filter(r => r.id !== requestId));
+      // Remove from sent requests
+      const updatedSent = connectionRequestsSent.filter(r => r.id !== requestId);
+      setConnectionRequestsSent(updatedSent);
+      localStorage.setItem("connectionRequestsSent", JSON.stringify(updatedSent));
+
+      // Remove from received requests on the other side (if it exists)
+      const connectionRequestsReceived = JSON.parse(localStorage.getItem("connectionRequestsReceived") || "[]");
+      const updatedReceived = connectionRequestsReceived.filter((r: any) => r.userId !== request.userId);
+      localStorage.setItem("connectionRequestsReceived", JSON.stringify(updatedReceived));
+
+      // Trigger update events
+      window.dispatchEvent(new Event("connectionRequestsUpdated"));
+      window.dispatchEvent(new Event("chatsUpdated"));
+
       toast.info(`Connection request to ${request.name} cancelled`);
     }
   };

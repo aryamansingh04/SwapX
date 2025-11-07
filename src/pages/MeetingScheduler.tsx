@@ -41,7 +41,49 @@ const MeetingScheduler = () => {
   const [meetingLink, setMeetingLink] = useState<string | null>(null);
 
   const handleSchedule = () => {
-    const jitsiLink = `https://meet.jit.si/swapx-${Date.now()}`;
+    if (!date) {
+      toast.error("Please select a date");
+      return;
+    }
+    
+    const jitsiLink = mode === "online" ? `https://meet.jit.si/swapx-${Date.now()}` : null;
+    const meetingDate = new Date(date);
+    meetingDate.setHours(parseInt(time.split(":")[0]), parseInt(time.split(":")[1]), 0, 0);
+    
+    // Create notification for meeting reminder
+    const notifications = JSON.parse(localStorage.getItem("notifications") || "[]");
+    const attendeeName = chatUser?.name || "a user";
+    const newNotification = {
+      id: Date.now().toString() + "-meeting",
+      title: "Meeting Scheduled",
+      message: `Meeting with ${attendeeName} scheduled for ${format(meetingDate, "MMM d, yyyy 'at' h:mm a")}`,
+      type: "meeting",
+      isRead: false,
+      timestamp: new Date().toISOString(),
+      link: "/dashboard",
+    };
+    notifications.unshift(newNotification);
+    
+    // Also create a reminder notification (30 minutes before)
+    const reminderTime = new Date(meetingDate.getTime() - 30 * 60 * 1000);
+    if (reminderTime > new Date()) {
+      const reminderNotification = {
+        id: Date.now().toString() + "-reminder",
+        title: "Meeting Reminder",
+        message: `Your meeting with ${attendeeName} starts in 30 minutes`,
+        type: "meeting",
+        isRead: false,
+        timestamp: reminderTime.toISOString(),
+        link: mode === "online" && jitsiLink ? jitsiLink : `/meeting/${id}`,
+      };
+      notifications.unshift(reminderNotification);
+    }
+    
+    // Keep only last 50 notifications
+    const limitedNotifications = notifications.slice(0, 50);
+    localStorage.setItem("notifications", JSON.stringify(limitedNotifications));
+    window.dispatchEvent(new Event("notificationsUpdated"));
+    
     toast.success(mode === "online" 
       ? `Meeting scheduled! Link: ${jitsiLink}` 
       : "Meeting scheduled successfully!"

@@ -42,8 +42,8 @@ A modern peer learning platform built with React, TypeScript, and Vite. SwapX en
 
 4. **Start the development server**
    ```bash
-   npm run dev
-   ```
+npm run dev
+```
 
    The app will be available at `http://localhost:8080` (or next available port)
 
@@ -83,13 +83,18 @@ src/
 │   ├── Notes.tsx       # Community notes
 │   ├── NoteDetail.tsx  # Note detail view
 │   ├── MyNotes.tsx     # User's personal notes
+│   ├── SavedNotes.tsx  # Saved/bookmarked notes
 │   ├── Reels.tsx       # Video reels
 │   ├── News.tsx        # News & blogs
+│   ├── NewsDetail.tsx  # News/blog detail view
 │   ├── GroupDiscussion.tsx # Group discussions list
 │   ├── GroupDetail.tsx # Group chat interface
+│   ├── GroupMembers.tsx # Group members view
 │   ├── ConnectionSettings.tsx # Connection settings
 │   ├── ProofViewer.tsx # View proofs
 │   └── NotFound.tsx    # 404 page
+├── data/               # Mock data
+│   └── mockUsers.ts    # Mock user data
 ├── stores/             # Zustand stores
 │   └── useAuthStore.ts # Authentication store
 ├── hooks/              # Custom hooks
@@ -119,10 +124,13 @@ src/
 - `/notes` - Community notes (shared by others)
 - `/notes/:id` - View note detail
 - `/my-notes` - Your personal notes
+- `/saved-notes` - Your bookmarked notes
 - `/reels` - Video reels (coming soon)
 - `/news` - News & blogs
+- `/news/:id` - News/blog detail view
 - `/groups` - Group discussions list
 - `/groups/:id` - Group chat interface
+- `/groups/:id/members` - Group members view
 - `/connection-settings` - Connection and privacy settings
 
 ## 🎯 Features
@@ -135,7 +143,8 @@ src/
 - ✅ Meeting scheduling (online/offline) with Jitsi integration
 - ✅ Session rating system (mutual ratings)
 - ✅ Trust score tracking
-- ✅ Connection request system
+- ✅ Connection request system with real-time synchronization
+- ✅ Comprehensive notification system with cross-component sync
 
 ### Community Features
 - ✅ Community Notes - Share and discover notes from the community
@@ -158,6 +167,16 @@ src/
 - ✅ Notification preferences
 - ✅ Communication preferences
 - ✅ Theme toggle (light/dark mode)
+
+### Notifications System
+- ✅ Real-time notifications for connection requests (sent/received/accepted)
+- ✅ Message notifications (when chat is not open)
+- ✅ Meeting scheduled and reminder notifications
+- ✅ Notification badge with unread count
+- ✅ Mark notifications as read (individual or all)
+- ✅ Auto-mark related notifications as read
+- ✅ Cross-component synchronization via event system
+- ✅ Notification persistence in localStorage
 
 ### UI/UX
 - ✅ Responsive design (mobile-first)
@@ -215,7 +234,13 @@ Authentication is handled via Zustand store with localStorage persistence:
 - **Zustand** for global state (auth, user data) with localStorage persistence
 - **TanStack Query** for server state management
 - **React Router** for navigation state
-- **Local Storage** for notes and settings persistence
+- **Local Storage** for notes, settings, chats, connections, and notifications persistence
+- **Event System** for cross-component synchronization:
+  - `connectionRequestsUpdated` - Triggers when connection requests change
+  - `chatsUpdated` - Triggers when chats are modified
+  - `notificationsUpdated` - Triggers when notifications change
+  - `bookmarksUpdated` - Triggers when bookmarks change
+  - `groupsUpdated` - Triggers when groups are modified
 
 ## 💬 Chat Features
 
@@ -228,9 +253,12 @@ Authentication is handled via Zustand store with localStorage persistence:
 - Message context menu (copy, reply, forward, star, delete)
 - Emoji picker
 - File attachments
-- Connection request system
+- Connection request system (must connect before chatting)
 - Archive/unarchive chats
+- Mute/unmute chats
 - Call history
+- Auto-mark message notifications as read when chat is opened
+- Real-time synchronization across all pages
 
 ### Group Discussions
 - Create groups with custom names, descriptions, and tags
@@ -291,6 +319,12 @@ The app is built mobile-first and fully responsive:
 - **Group Discussions**: localStorage (groups, messages, members)
 - **Connection Settings**: localStorage
 - **Theme Preference**: localStorage
+- **Chats**: localStorage (messages, connection status, unread counts)
+- **Connection Requests**: localStorage (sent and received requests)
+- **Connections**: localStorage (accepted connections list)
+- **Notifications**: localStorage (all notifications with read status)
+- **Bookmarked Notes**: localStorage (user's bookmarked notes)
+- **News & Blogs**: localStorage (user-created blogs)
 
 ## 🔧 Development
 

@@ -1,4 +1,4 @@
-import { MessageCircle, Calendar, Star, FileText } from "lucide-react";
+import { Star, FileText, Github, Linkedin } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useAuthStore } from "@/stores/useAuthStore";
 
 interface ProfileModalProps {
   user: {
@@ -24,6 +25,8 @@ interface ProfileModalProps {
     skillsToLearn: string[];
     trustScore: number;
     totalSessions: number;
+    github?: string;
+    linkedin?: string;
     proofs: Array<{ type: string; url: string; skill: string }>;
   } | null;
   isOpen: boolean;
@@ -32,14 +35,77 @@ interface ProfileModalProps {
 
 const ProfileModal = ({ user, isOpen, onClose }: ProfileModalProps) => {
   const navigate = useNavigate();
+  const { user: currentUser } = useAuthStore();
 
   if (!user) return null;
 
   const handleConnect = () => {
+    // Load existing connection requests
+    const connectionRequestsSent = JSON.parse(
+      localStorage.getItem("connectionRequestsSent") || "[]"
+    );
+    const connectionRequestsReceived = JSON.parse(
+      localStorage.getItem("connectionRequestsReceived") || "[]"
+    );
+    const connections = JSON.parse(
+      localStorage.getItem("connections") || "[]"
+    );
+
+    // Check if already connected
+    if (connections.includes(user.id)) {
+      toast.info("You are already connected with this user");
+      navigate(`/chat/${user.id}`);
+      onClose();
+      return;
+    }
+
+    // Check if request already sent
+    if (connectionRequestsSent.some((r: any) => r.userId === user.id)) {
+      toast.info("Connection request already sent");
+      navigate(`/chat/${user.id}`);
+      onClose();
+      return;
+    }
+
+    // Add to sent requests
+    const newRequest = {
+      id: Date.now().toString(),
+      userId: user.id,
+      name: user.name,
+      avatar: user.avatar,
+      sentAt: new Date().toISOString(),
+      status: "pending",
+    };
+
+    connectionRequestsSent.push(newRequest);
+    localStorage.setItem("connectionRequestsSent", JSON.stringify(connectionRequestsSent));
+
+    // Create a notification for the connection request
+    const notifications = JSON.parse(localStorage.getItem("notifications") || "[]");
+    const newNotification = {
+      id: Date.now().toString(),
+      title: "Connection Request Sent",
+      message: `You sent a connection request to ${user.name}`,
+      type: "connection",
+      isRead: false,
+      timestamp: new Date().toISOString(),
+      link: `/chat/${user.id}`,
+    };
+    notifications.unshift(newNotification);
+    // Keep only last 50 notifications
+    const limitedNotifications = notifications.slice(0, 50);
+    localStorage.setItem("notifications", JSON.stringify(limitedNotifications));
+
+    // Trigger update events
+    window.dispatchEvent(new Event("connectionRequestsUpdated"));
+    window.dispatchEvent(new Event("chatsUpdated"));
+    window.dispatchEvent(new Event("notificationsUpdated"));
+
     toast.success("Connection request sent!");
     setTimeout(() => {
       onClose();
-    }, 1000);
+      navigate(`/chat/${user.id}`);
+    }, 500);
   };
 
   const handleProofClick = (proofUrl: string, skill: string) => {
@@ -65,7 +131,35 @@ const ProfileModal = ({ user, isOpen, onClose }: ProfileModalProps) => {
               <AvatarFallback>{user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
             </Avatar>
             <div className="flex-1">
-              <DialogTitle className="text-2xl mb-2">{user.name}</DialogTitle>
+              <div className="flex items-center gap-3 mb-2">
+                <DialogTitle className="text-2xl">{user.name}</DialogTitle>
+                <div className="flex items-center gap-2">
+                  {user.github && (
+                    <a
+                      href={user.github}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-muted-foreground hover:text-primary transition-colors"
+                      aria-label="GitHub Profile"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Github className="h-5 w-5" />
+                    </a>
+                  )}
+                  {user.linkedin && (
+                    <a
+                      href={user.linkedin}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-muted-foreground hover:text-primary transition-colors"
+                      aria-label="LinkedIn Profile"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Linkedin className="h-5 w-5" />
+                    </a>
+                  )}
+                </div>
+              </div>
               <DialogDescription className="text-base">{user.bio}</DialogDescription>
               <div className="flex items-center gap-4 mt-3">
                 <div className="flex items-center gap-1">
@@ -132,12 +226,6 @@ const ProfileModal = ({ user, isOpen, onClose }: ProfileModalProps) => {
         <div className="flex gap-3 pt-4">
           <Button onClick={handleConnect} className="flex-1">
             Connect
-          </Button>
-          <Button variant="outline" size="icon">
-            <MessageCircle className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon">
-            <Calendar className="h-4 w-4" />
           </Button>
         </div>
       </DialogContent>

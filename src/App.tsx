@@ -25,10 +25,13 @@ import Reels from "./pages/Reels";
 import Notes from "./pages/Notes";
 import NoteDetail from "./pages/NoteDetail";
 import MyNotes from "./pages/MyNotes";
+import SavedNotes from "./pages/SavedNotes";
 import ConnectionSettings from "./pages/ConnectionSettings";
 import GroupDiscussion from "./pages/GroupDiscussion";
 import GroupDetail from "./pages/GroupDetail";
+import GroupMembers from "./pages/GroupMembers";
 import News from "./pages/News";
+import NewsDetail from "./pages/NewsDetail";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -146,6 +149,14 @@ const App = () => (
               }
             />
             <Route
+              path="/saved-notes"
+              element={
+                <ProtectedRoute>
+                  <SavedNotes />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/connection-settings"
               element={
                 <ProtectedRoute>
@@ -170,10 +181,26 @@ const App = () => (
               }
             />
             <Route
+              path="/groups/:id/members"
+              element={
+                <ProtectedRoute>
+                  <GroupMembers />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/news"
               element={
                 <ProtectedRoute>
                   <News />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/news/:id"
+              element={
+                <ProtectedRoute>
+                  <NewsDetail />
                 </ProtectedRoute>
               }
             />

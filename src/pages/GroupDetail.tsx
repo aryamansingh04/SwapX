@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   MoreVertical,
   Users,
-  Settings,
   Smile,
   Check,
   CheckCheck,
@@ -47,6 +46,12 @@ interface GroupMessage {
   timestamp: Date;
   isOwn: boolean;
   isStarred?: boolean;
+  attachment?: {
+    type: "image" | "video" | "file";
+    name: string;
+    size: string;
+    url?: string; // For image/video previews
+  };
 }
 
 interface GroupMember {
@@ -77,6 +82,7 @@ const GroupDetail = () => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Emoji options
   const emojis = ["😀", "😂", "😍", "🥰", "😎", "🤔", "👍", "❤️", "🔥", "✨", "🎉", "💯"];
@@ -336,6 +342,108 @@ const GroupDetail = () => {
     setShowEmojiPicker(false);
   };
 
+  const handleFileAttach = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    if (!group || !user) {
+      toast.error("Unable to send file");
+      e.target.value = "";
+      return;
+    }
+
+    const file = files[0];
+    const maxSize = 10 * 1024 * 1024; // 10MB
+
+    if (file.size > maxSize) {
+      toast.error("File size should be less than 10MB");
+      e.target.value = "";
+      return;
+    }
+
+    // Determine file type
+    const isImage = file.type.startsWith("image/");
+    const isVideo = file.type.startsWith("video/");
+    
+    // Determine file type icon/emoji
+    const fileType = isImage ? "📷 Image" : 
+                     isVideo ? "🎥 Video" :
+                     file.type.includes("pdf") ? "📄 PDF" :
+                     file.type.includes("doc") || file.type.includes("word") ? "📝 Document" :
+                     file.type.includes("sheet") || file.type.includes("excel") ? "📊 Spreadsheet" :
+                     file.type.includes("zip") || file.type.includes("rar") ? "📦 Archive" :
+                     "📎 File";
+    
+    const fileSize = file.size < 1024 
+      ? `${file.size} B` 
+      : file.size < 1024 * 1024 
+        ? `${(file.size / 1024).toFixed(2)} KB` 
+        : `${(file.size / (1024 * 1024)).toFixed(2)} MB`;
+    
+    // Create file URL for preview (images and videos)
+    let fileUrl: string | undefined;
+    if (isImage || isVideo) {
+      fileUrl = URL.createObjectURL(file);
+    }
+    
+    const fileMessage = `${fileType}: ${file.name} (${fileSize})`;
+    
+    // Create new message with file info
+    const newMessage: GroupMessage = {
+      id: `msg-${Date.now()}`,
+      senderId: user.id || "1",
+      senderName: user.name || "You",
+      senderAvatar: user.avatar,
+      text: fileMessage,
+      timestamp: new Date(),
+      isOwn: true,
+      attachment: {
+        type: isImage ? "image" : isVideo ? "video" : "file",
+        name: file.name,
+        size: fileSize,
+        url: fileUrl,
+      },
+    };
+
+    const updatedGroup: Group = {
+      ...group,
+      messages: [...group.messages, newMessage],
+    };
+
+    const groups = JSON.parse(localStorage.getItem("groups") || "[]");
+    const groupIndex = groups.findIndex((g: any) => g.id === group.id);
+    if (groupIndex !== -1) {
+      // Note: We can't store blob URLs in localStorage, so we'll just store the file info
+      // In a real app, you would upload the file to a server and store the URL
+      groups[groupIndex] = {
+        ...updatedGroup,
+        messages: updatedGroup.messages.map((msg) => ({
+          ...msg,
+          timestamp: msg.timestamp.toISOString(),
+          // Don't store blob URL in localStorage as it won't persist
+          attachment: msg.attachment ? {
+            ...msg.attachment,
+            url: undefined, // Blob URLs are session-only
+          } : undefined,
+        })),
+        createdAt: updatedGroup.createdAt.toISOString(),
+      };
+      saveGroups(groups);
+      window.dispatchEvent(new Event("groupsUpdated"));
+    }
+    setGroup(updatedGroup);
+    setMessageText("");
+    
+    // Reset file input
+    e.target.value = "";
+    
+    toast.success("File attachment sent");
+  };
+
   const handleCopyMessage = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success("Message copied to clipboard");
@@ -471,7 +579,7 @@ const GroupDetail = () => {
               variant="ghost"
               size="icon"
               onClick={() => navigate("/groups")}
-              className="md:hidden"
+              className="flex-shrink-0"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
@@ -495,14 +603,6 @@ const GroupDetail = () => {
                 <DropdownMenuItem onClick={() => navigate(`/groups/${id}/members`)}>
                   <Users className="h-4 w-4 mr-2" />
                   View Members
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate(`/groups/${id}/settings`)}>
-                  <Settings className="h-4 w-4 mr-2" />
-                  Group Settings
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate("/groups")}>
-                  Leave Group
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -568,6 +668,27 @@ const GroupDetail = () => {
                               : "bg-muted rounded-tl-sm"
                           }`}
                         >
+                          {/* Show image/video preview if attachment exists */}
+                          {message.attachment?.type === "image" && message.attachment.url && (
+                            <div className="mb-2 rounded-lg overflow-hidden max-w-sm">
+                              <img
+                                src={message.attachment.url}
+                                alt={message.attachment.name}
+                                className="w-full h-auto object-contain max-h-64"
+                              />
+                            </div>
+                          )}
+                          {message.attachment?.type === "video" && message.attachment.url && (
+                            <div className="mb-2 rounded-lg overflow-hidden max-w-sm">
+                              <video
+                                src={message.attachment.url}
+                                controls
+                                className="w-full h-auto max-h-64"
+                              >
+                                Your browser does not support the video tag.
+                              </video>
+                            </div>
+                          )}
                           <p className="text-sm whitespace-pre-wrap break-words">
                             {message.text}
                           </p>
@@ -599,6 +720,14 @@ const GroupDetail = () => {
 
         {/* Message Input */}
         <div className="border-t bg-background p-3">
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            onChange={handleFileChange}
+            accept="image/*,video/*,.pdf,.doc,.docx,.txt,.xls,.xlsx,.zip,.rar"
+          />
           <div className="flex items-end gap-2">
             <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
               <PopoverTrigger asChild>
@@ -622,7 +751,13 @@ const GroupDetail = () => {
                 </div>
               </PopoverContent>
             </Popover>
-            <Button variant="ghost" size="icon" className="flex-shrink-0">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="flex-shrink-0"
+              onClick={handleFileAttach}
+              type="button"
+            >
               <Paperclip className="h-5 w-5" />
             </Button>
             <Input

@@ -259,12 +259,161 @@ const Chat = () => {
   const [message, setMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedChatId, setSelectedChatId] = useState<string | null>(connectionId || null);
-  const [chats, setChats] = useState<Chat[]>(mockChats);
+  const [chats, setChats] = useState<Chat[]>([]);
   const [showCallHistory, setShowCallHistory] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [newChatOpen, setNewChatOpen] = useState(false);
   const [newChatName, setNewChatName] = useState("");
   const [newChatAvatar, setNewChatAvatar] = useState("");
+
+  // Load chats from localStorage and connection requests
+  useEffect(() => {
+    const loadChats = () => {
+      // Load existing chats from localStorage
+      const savedChats = localStorage.getItem("chats");
+      let existingChats: Chat[] = [];
+      if (savedChats) {
+        try {
+          const parsed = JSON.parse(savedChats);
+          existingChats = parsed.map((chat: any) => ({
+            ...chat,
+            messages: chat.messages.map((msg: any) => ({
+              ...msg,
+              timestamp: new Date(msg.timestamp),
+            })),
+          }));
+        } catch {
+          existingChats = [...mockChats];
+        }
+      } else {
+        existingChats = [...mockChats];
+      }
+
+      // Load connection requests
+      const connectionRequestsSent = JSON.parse(
+        localStorage.getItem("connectionRequestsSent") || "[]"
+      );
+      const connectionRequestsReceived = JSON.parse(
+        localStorage.getItem("connectionRequestsReceived") || "[]"
+      );
+      const connections = JSON.parse(
+        localStorage.getItem("connections") || "[]"
+      );
+
+      // Import mockUsers to get user data
+      import("@/data/mockUsers").then(({ mockUsers }) => {
+        // Create chat entries for connection requests
+        const requestChats: Chat[] = [];
+
+        // Add chats for sent connection requests
+        connectionRequestsSent.forEach((request: any) => {
+          const userData = mockUsers.find((u) => u.id === request.userId);
+          if (userData && !existingChats.find((c) => c.id === request.userId)) {
+            const isConnected = connections.includes(request.userId);
+            requestChats.push({
+              id: request.userId,
+              name: userData.name,
+              avatar: userData.avatar,
+              lastMessage: isConnected ? "Start a conversation" : "Connection request sent",
+              lastMessageTime: format(new Date(request.sentAt), "h:mm a"),
+              unreadCount: 0,
+              isPinned: false,
+              isMuted: false,
+              isArchived: false,
+              isTyping: false,
+              connectionStatus: isConnected
+                ? "connected"
+                : request.status === "rejected"
+                ? "not-connected"
+                : "pending-sent",
+              messages: [],
+            });
+          }
+        });
+
+        // Add chats for received connection requests
+        connectionRequestsReceived.forEach((request: any) => {
+          const userData = mockUsers.find((u) => u.id === request.userId || u.id === request.id);
+          const userId = request.userId || request.id;
+          if (userData && !existingChats.find((c) => c.id === userId)) {
+            const isConnected = connections.includes(userId);
+            requestChats.push({
+              id: userId,
+              name: userData.name || request.name,
+              avatar: userData.avatar || request.avatar,
+              lastMessage: isConnected ? "Start a conversation" : "Connection request received",
+              lastMessageTime: format(new Date(request.sentAt), "h:mm a"),
+              unreadCount: 0,
+              isPinned: false,
+              isMuted: false,
+              isArchived: false,
+              isTyping: false,
+              connectionStatus: isConnected ? "connected" : "pending-received",
+              messages: [],
+            });
+          }
+        });
+
+        // Update existing chats' connection status
+        const updatedChats = existingChats.map((chat) => {
+          const isConnected = connections.includes(chat.id);
+          const sentRequest = connectionRequestsSent.find((r: any) => r.userId === chat.id);
+          const receivedRequest = connectionRequestsReceived.find(
+            (r: any) => (r.userId || r.id) === chat.id
+          );
+
+          let connectionStatus = chat.connectionStatus || "not-connected";
+          if (isConnected) {
+            connectionStatus = "connected";
+          } else if (sentRequest) {
+            connectionStatus =
+              sentRequest.status === "rejected" ? "not-connected" : "pending-sent";
+          } else if (receivedRequest) {
+            connectionStatus = "pending-received";
+          }
+
+          return {
+            ...chat,
+            connectionStatus,
+          };
+        });
+
+        // Merge and update chats
+        const allChats: Chat[] = [...updatedChats];
+        requestChats.forEach((requestChat) => {
+          if (!allChats.find((c) => c.id === requestChat.id)) {
+            allChats.push({
+              ...requestChat,
+              connectionStatus: requestChat.connectionStatus || "not-connected",
+            });
+          }
+        });
+
+        // Ensure all chats have connectionStatus
+        const allChatsWithStatus = allChats.map((chat) => ({
+          ...chat,
+          connectionStatus: chat.connectionStatus || "not-connected",
+        }));
+
+        setChats(allChatsWithStatus);
+        localStorage.setItem("chats", JSON.stringify(allChatsWithStatus));
+      });
+    };
+
+    loadChats();
+
+    // Listen for updates
+    const handleChatsUpdate = () => {
+      loadChats();
+    };
+    window.addEventListener("chatsUpdated", handleChatsUpdate);
+    window.addEventListener("connectionRequestsUpdated", handleChatsUpdate);
+
+    return () => {
+      window.removeEventListener("chatsUpdated", handleChatsUpdate);
+      window.removeEventListener("connectionRequestsUpdated", handleChatsUpdate);
+    };
+  }, []);
   
   // Mock call history data
   const [callHistory] = useState<CallHistory[]>([
@@ -325,13 +474,27 @@ const Chat = () => {
     if (connectionId) {
       setSelectedChatId(connectionId);
       // Clear unread count when chat is opened via URL
-      setChats(prevChats =>
-        prevChats.map(chat =>
+      setChats(prevChats => {
+        const updatedChats = prevChats.map(chat =>
           chat.id === connectionId
             ? { ...chat, unreadCount: 0 }
             : chat
-        )
-      );
+        );
+        localStorage.setItem("chats", JSON.stringify(updatedChats));
+        window.dispatchEvent(new Event("chatsUpdated"));
+        
+        // Mark message notifications for this chat as read
+        const notifications = JSON.parse(localStorage.getItem("notifications") || "[]");
+        const updatedNotifications = notifications.map((n: any) =>
+          n.type === "message" && n.chatId === connectionId
+            ? { ...n, isRead: true }
+            : n
+        );
+        localStorage.setItem("notifications", JSON.stringify(updatedNotifications));
+        window.dispatchEvent(new Event("notificationsUpdated"));
+        
+        return updatedChats;
+      });
     } else {
       setSelectedChatId(null);
     }
@@ -440,75 +603,92 @@ const Chat = () => {
       status: "sending",
     };
 
-    setChats(prevChats => 
-      prevChats.map(chat => {
-        if (chat.id === selectedChatId) {
-          return {
-            ...chat,
-            messages: [...chat.messages, newMessage],
-            lastMessage: newMessage.text,
-            lastMessageTime: newMessage.time,
-          };
-        }
-        return chat;
-      })
-    );
+    const updatedChats = chats.map(chat => {
+      if (chat.id === selectedChatId) {
+        return {
+          ...chat,
+          messages: [...chat.messages, newMessage],
+          lastMessage: newMessage.text,
+          lastMessageTime: newMessage.time,
+        };
+      }
+      return chat;
+    });
+    
+    setChats(updatedChats);
+    localStorage.setItem("chats", JSON.stringify(updatedChats));
+    
+    // Create notification for new message (if chat is not currently open)
+    // Note: In a real app, this would be handled by the backend/other user
+    // For now, we'll create a notification when messages are sent to simulate receiving messages
+    const notifications = JSON.parse(localStorage.getItem("notifications") || "[]");
+    // Only create notification if this is simulating a received message (not from current user)
+    // Since we're sending, we won't create a notification here - it would be created when receiving
+    
+    // Dispatch event to sync with other components
+    window.dispatchEvent(new Event("chatsUpdated"));
     
     setMessage("");
 
     // Simulate message delivery and read status
     setTimeout(() => {
-      setChats(prevChats =>
-        prevChats.map(chat => {
-          if (chat.id === selectedChatId) {
-            return {
-              ...chat,
-              messages: chat.messages.map(msg =>
-                msg.id === newMessage.id
-                  ? { ...msg, status: "sent" as const }
-                  : msg
-              ),
-            };
-          }
-          return chat;
-        })
-      );
+      const currentChats = JSON.parse(localStorage.getItem("chats") || JSON.stringify(updatedChats));
+      const updated = currentChats.map((chat: Chat) => {
+        if (chat.id === selectedChatId) {
+          return {
+            ...chat,
+            messages: chat.messages.map((msg: ChatMessage) =>
+              msg.id === newMessage.id
+                ? { ...msg, status: "sent" as const }
+                : msg
+            ),
+          };
+        }
+        return chat;
+      });
+      setChats(updated);
+      localStorage.setItem("chats", JSON.stringify(updated));
+      window.dispatchEvent(new Event("chatsUpdated"));
     }, 500);
 
     setTimeout(() => {
-      setChats(prevChats =>
-        prevChats.map(chat => {
-          if (chat.id === selectedChatId) {
-            return {
-              ...chat,
-              messages: chat.messages.map(msg =>
-                msg.id === newMessage.id
-                  ? { ...msg, status: "delivered" as const }
-                  : msg
-              ),
-            };
-          }
-          return chat;
-        })
-      );
+      const currentChats = JSON.parse(localStorage.getItem("chats") || "[]");
+      const updated = currentChats.map((chat: Chat) => {
+        if (chat.id === selectedChatId) {
+          return {
+            ...chat,
+            messages: chat.messages.map((msg: ChatMessage) =>
+              msg.id === newMessage.id
+                ? { ...msg, status: "delivered" as const }
+                : msg
+            ),
+          };
+        }
+        return chat;
+      });
+      setChats(updated);
+      localStorage.setItem("chats", JSON.stringify(updated));
+      window.dispatchEvent(new Event("chatsUpdated"));
     }, 1000);
 
     setTimeout(() => {
-      setChats(prevChats =>
-        prevChats.map(chat => {
-          if (chat.id === selectedChatId) {
-            return {
-              ...chat,
-              messages: chat.messages.map(msg =>
-                msg.id === newMessage.id
-                  ? { ...msg, status: "read" as const }
-                  : msg
-              ),
-            };
-          }
-          return chat;
-        })
-      );
+      const currentChats = JSON.parse(localStorage.getItem("chats") || "[]");
+      const updated = currentChats.map((chat: Chat) => {
+        if (chat.id === selectedChatId) {
+          return {
+            ...chat,
+            messages: chat.messages.map((msg: ChatMessage) =>
+              msg.id === newMessage.id
+                ? { ...msg, status: "read" as const }
+                : msg
+            ),
+          };
+        }
+        return chat;
+      });
+      setChats(updated);
+      localStorage.setItem("chats", JSON.stringify(updated));
+      window.dispatchEvent(new Event("chatsUpdated"));
     }, 2000);
   };
 
@@ -532,37 +712,39 @@ const Chat = () => {
 
   const handleStarMessage = (messageId: string) => {
     if (!selectedChatId) return;
-    setChats(prevChats =>
-      prevChats.map(chat => {
-        if (chat.id === selectedChatId) {
-          return {
-            ...chat,
-            messages: chat.messages.map(msg =>
-              msg.id === messageId
-                ? { ...msg, isStarred: !msg.isStarred }
-                : msg
-            ),
-          };
-        }
-        return chat;
-      })
-    );
+    const updatedChats = chats.map(chat => {
+      if (chat.id === selectedChatId) {
+        return {
+          ...chat,
+          messages: chat.messages.map(msg =>
+            msg.id === messageId
+              ? { ...msg, isStarred: !msg.isStarred }
+              : msg
+          ),
+        };
+      }
+      return chat;
+    });
+    setChats(updatedChats);
+    localStorage.setItem("chats", JSON.stringify(updatedChats));
+    window.dispatchEvent(new Event("chatsUpdated"));
     setSelectedMessageId(null);
   };
 
   const handleDeleteMessage = (messageId: string) => {
     if (!selectedChatId) return;
-    setChats(prevChats =>
-      prevChats.map(chat => {
-        if (chat.id === selectedChatId) {
-          return {
-            ...chat,
-            messages: chat.messages.filter(msg => msg.id !== messageId),
-          };
-        }
-        return chat;
-      })
-    );
+    const updatedChats = chats.map(chat => {
+      if (chat.id === selectedChatId) {
+        return {
+          ...chat,
+          messages: chat.messages.filter(msg => msg.id !== messageId),
+        };
+      }
+      return chat;
+    });
+    setChats(updatedChats);
+    localStorage.setItem("chats", JSON.stringify(updatedChats));
+    window.dispatchEvent(new Event("chatsUpdated"));
     toast.success("Message deleted");
     setSelectedMessageId(null);
   };
@@ -654,55 +836,60 @@ const Chat = () => {
       status: "sending",
     };
 
-    setChats(prevChats => 
-      prevChats.map(chat => {
-        if (chat.id === selectedChatId) {
-          return {
-            ...chat,
-            messages: [...chat.messages, newMessage],
-            lastMessage: fileMessage,
-            lastMessageTime: newMessage.time,
-          };
-        }
-        return chat;
-      })
-    );
+    const updatedChats = chats.map(chat => {
+      if (chat.id === selectedChatId) {
+        return {
+          ...chat,
+          messages: [...chat.messages, newMessage],
+          lastMessage: fileMessage,
+          lastMessageTime: newMessage.time,
+        };
+      }
+      return chat;
+    });
+    setChats(updatedChats);
+    localStorage.setItem("chats", JSON.stringify(updatedChats));
+    window.dispatchEvent(new Event("chatsUpdated"));
 
     // Simulate file upload and message delivery
     setTimeout(() => {
-      setChats(prevChats =>
-        prevChats.map(chat => {
-          if (chat.id === selectedChatId) {
-            return {
-              ...chat,
-              messages: chat.messages.map(msg =>
-                msg.id === newMessage.id
-                  ? { ...msg, status: "sent" as const }
-                  : msg
-              ),
-            };
-          }
-          return chat;
-        })
-      );
+      const currentChats = JSON.parse(localStorage.getItem("chats") || JSON.stringify(updatedChats));
+      const updated = currentChats.map((chat: Chat) => {
+        if (chat.id === selectedChatId) {
+          return {
+            ...chat,
+            messages: chat.messages.map((msg: ChatMessage) =>
+              msg.id === newMessage.id
+                ? { ...msg, status: "sent" as const }
+                : msg
+            ),
+          };
+        }
+        return chat;
+      });
+      setChats(updated);
+      localStorage.setItem("chats", JSON.stringify(updated));
+      window.dispatchEvent(new Event("chatsUpdated"));
     }, 500);
 
     setTimeout(() => {
-      setChats(prevChats =>
-        prevChats.map(chat => {
-          if (chat.id === selectedChatId) {
-            return {
-              ...chat,
-              messages: chat.messages.map(msg =>
-                msg.id === newMessage.id
-                  ? { ...msg, status: "delivered" as const }
-                  : msg
-              ),
-            };
-          }
-          return chat;
-        })
-      );
+      const currentChats = JSON.parse(localStorage.getItem("chats") || "[]");
+      const updated = currentChats.map((chat: Chat) => {
+        if (chat.id === selectedChatId) {
+          return {
+            ...chat,
+            messages: chat.messages.map((msg: ChatMessage) =>
+              msg.id === newMessage.id
+                ? { ...msg, status: "delivered" as const }
+                : msg
+            ),
+          };
+        }
+        return chat;
+      });
+      setChats(updated);
+      localStorage.setItem("chats", JSON.stringify(updated));
+      window.dispatchEvent(new Event("chatsUpdated"));
     }, 1000);
 
     toast.success(`${fileType} attached: ${file.name}`);
@@ -713,48 +900,202 @@ const Chat = () => {
 
   const handleChatSelect = (chatId: string) => {
     // Clear unread count when chat is selected
-    setChats(prevChats =>
-      prevChats.map(chat =>
-        chat.id === chatId
-          ? { ...chat, unreadCount: 0 }
-          : chat
-      )
+    const updatedChats = chats.map(chat =>
+      chat.id === chatId
+        ? { ...chat, unreadCount: 0 }
+        : chat
     );
+    setChats(updatedChats);
+    localStorage.setItem("chats", JSON.stringify(updatedChats));
+    window.dispatchEvent(new Event("chatsUpdated"));
+    
+    // Mark message notifications for this chat as read
+    const notifications = JSON.parse(localStorage.getItem("notifications") || "[]");
+    const updatedNotifications = notifications.map((n: any) =>
+      n.type === "message" && n.chatId === chatId
+        ? { ...n, isRead: true }
+        : n
+    );
+    localStorage.setItem("notifications", JSON.stringify(updatedNotifications));
+    window.dispatchEvent(new Event("notificationsUpdated"));
+    
     setSelectedChatId(chatId);
     navigate(`/chat/${chatId}`);
   };
 
   // Connection request handlers
   const handleSendConnectionRequest = (chatId: string) => {
-    setChats(prevChats =>
-      prevChats.map(chat =>
-        chat.id === chatId
-          ? { ...chat, connectionStatus: "pending-sent" as const }
-          : chat
-      )
+    // Load connection requests
+    const connectionRequestsSent = JSON.parse(
+      localStorage.getItem("connectionRequestsSent") || "[]"
     );
-    toast.success("Connection request sent!");
+    const chat = chats.find((c) => c.id === chatId);
+    
+    if (chat && !connectionRequestsSent.some((r: any) => r.userId === chatId)) {
+      // Add to sent requests
+      const newRequest = {
+        id: Date.now().toString(),
+        userId: chatId,
+        name: chat.name,
+        avatar: chat.avatar,
+        sentAt: new Date().toISOString(),
+        status: "pending",
+      };
+
+      connectionRequestsSent.push(newRequest);
+      localStorage.setItem("connectionRequestsSent", JSON.stringify(connectionRequestsSent));
+
+      // Update chat status
+      setChats((prevChats) =>
+        prevChats.map((c) =>
+          c.id === chatId ? { ...c, connectionStatus: "pending-sent" as const } : c
+        )
+      );
+
+      // Save chats
+      const updatedChats = chats.map((c) =>
+        c.id === chatId ? { ...c, connectionStatus: "pending-sent" as const } : c
+      );
+      localStorage.setItem("chats", JSON.stringify(updatedChats));
+
+      // Trigger update events
+      window.dispatchEvent(new Event("connectionRequestsUpdated"));
+      window.dispatchEvent(new Event("chatsUpdated"));
+
+      toast.success("Connection request sent!");
+    }
   };
 
   const handleAcceptConnection = (chatId: string) => {
-    setChats(prevChats =>
-      prevChats.map(chat =>
+    // Load connection requests
+    const connectionRequestsReceived = JSON.parse(
+      localStorage.getItem("connectionRequestsReceived") || "[]"
+    );
+    const connections = JSON.parse(localStorage.getItem("connections") || "[]");
+
+    // Remove from received requests
+    const updatedReceived = connectionRequestsReceived.filter(
+      (r: any) => (r.userId || r.id) !== chatId
+    );
+    localStorage.setItem("connectionRequestsReceived", JSON.stringify(updatedReceived));
+
+    // Add to connections
+    if (!connections.includes(chatId)) {
+      connections.push(chatId);
+      localStorage.setItem("connections", JSON.stringify(connections));
+    }
+
+    // Update sent request status on the other side
+    const connectionRequestsSent = JSON.parse(
+      localStorage.getItem("connectionRequestsSent") || "[]"
+    );
+    const updatedSent = connectionRequestsSent.map((r: any) =>
+      r.userId === chatId ? { ...r, status: "accepted" } : r
+    );
+    localStorage.setItem("connectionRequestsSent", JSON.stringify(updatedSent));
+
+    // Update chat status
+    setChats((prevChats) =>
+      prevChats.map((chat) =>
         chat.id === chatId
-          ? { ...chat, connectionStatus: "connected" as const }
+          ? { ...chat, connectionStatus: "connected" as const, lastMessage: "Start a conversation" }
           : chat
       )
     );
+
+    // Save chats
+    const updatedChats = chats.map((chat) =>
+      chat.id === chatId
+        ? { ...chat, connectionStatus: "connected" as const, lastMessage: "Start a conversation" }
+        : chat
+    );
+    localStorage.setItem("chats", JSON.stringify(updatedChats));
+
+    // Create a notification
+    const notifications = JSON.parse(localStorage.getItem("notifications") || "[]");
+    const chat = chats.find((c) => c.id === chatId);
+    if (chat) {
+      const newNotification = {
+        id: Date.now().toString(),
+        title: "Connection Accepted",
+        message: `You are now connected with ${chat.name}`,
+        type: "connection",
+        isRead: false,
+        timestamp: new Date().toISOString(),
+        link: `/chat/${chatId}`,
+        userId: chatId,
+      };
+      
+      // Mark related connection request notifications as read
+      const updatedNotifications = notifications.map((n: any) =>
+        n.type === "connection" && (n.userId === chatId || n.message?.includes(chat.name))
+          ? { ...n, isRead: true }
+          : n
+      );
+      updatedNotifications.unshift(newNotification);
+      const limitedNotifications = updatedNotifications.slice(0, 50);
+      localStorage.setItem("notifications", JSON.stringify(limitedNotifications));
+    }
+
+    // Trigger update events
+    window.dispatchEvent(new Event("connectionRequestsUpdated"));
+    window.dispatchEvent(new Event("chatsUpdated"));
+    window.dispatchEvent(new Event("notificationsUpdated"));
+
     toast.success("Connection accepted! You can now chat.");
   };
 
   const handleRejectConnection = (chatId: string) => {
-    setChats(prevChats =>
-      prevChats.map(chat =>
-        chat.id === chatId
-          ? { ...chat, connectionStatus: "not-connected" as const }
-          : chat
+    // Load connection requests
+    const connectionRequestsReceived = JSON.parse(
+      localStorage.getItem("connectionRequestsReceived") || "[]"
+    );
+
+    // Remove from received requests
+    const updatedReceived = connectionRequestsReceived.filter(
+      (r: any) => (r.userId || r.id) !== chatId
+    );
+    localStorage.setItem("connectionRequestsReceived", JSON.stringify(updatedReceived));
+
+    // Update sent request status on the other side
+    const connectionRequestsSent = JSON.parse(
+      localStorage.getItem("connectionRequestsSent") || "[]"
+    );
+    const updatedSent = connectionRequestsSent.map((r: any) =>
+      r.userId === chatId ? { ...r, status: "rejected" } : r
+    );
+    localStorage.setItem("connectionRequestsSent", JSON.stringify(updatedSent));
+
+    // Update chat status
+    setChats((prevChats) =>
+      prevChats.map((chat) =>
+        chat.id === chatId ? { ...chat, connectionStatus: "not-connected" as const } : chat
       )
     );
+
+    // Save chats
+    const updatedChats = chats.map((chat) =>
+      chat.id === chatId ? { ...chat, connectionStatus: "not-connected" as const } : chat
+    );
+    localStorage.setItem("chats", JSON.stringify(updatedChats));
+
+    // Mark related connection request notifications as read
+    const notifications = JSON.parse(localStorage.getItem("notifications") || "[]");
+    const chat = chats.find((c) => c.id === chatId);
+    if (chat) {
+      const updatedNotifications = notifications.map((n: any) =>
+        n.type === "connection" && (n.userId === chatId || n.message?.includes(chat.name))
+          ? { ...n, isRead: true }
+          : n
+      );
+      localStorage.setItem("notifications", JSON.stringify(updatedNotifications));
+    }
+
+    // Trigger update events
+    window.dispatchEvent(new Event("connectionRequestsUpdated"));
+    window.dispatchEvent(new Event("chatsUpdated"));
+    window.dispatchEvent(new Event("notificationsUpdated"));
+
     toast.success("Connection request rejected");
   };
 
@@ -819,7 +1160,10 @@ const Chat = () => {
       messages: []
     };
     
-    setChats(prevChats => [newChat, ...prevChats]);
+    const updatedChats = [newChat, ...chats];
+    setChats(updatedChats);
+    localStorage.setItem("chats", JSON.stringify(updatedChats));
+    window.dispatchEvent(new Event("chatsUpdated"));
     setNewChatOpen(false);
     setNewChatName("");
     setNewChatAvatar("");
@@ -828,79 +1172,83 @@ const Chat = () => {
   };
 
   const handleArchiveChat = () => {
+    let updatedChats: Chat[];
     if (selectedChatId) {
-      setChats(prevChats =>
-        prevChats.map(chat =>
-          chat.id === selectedChatId
-            ? { ...chat, isArchived: true }
-            : chat
-        )
+      updatedChats = chats.map(chat =>
+        chat.id === selectedChatId
+          ? { ...chat, isArchived: true }
+          : chat
       );
       navigate("/chat");
       toast.success("Chat archived");
     } else {
       // Archive all chats
-      setChats(prevChats =>
-        prevChats.map(chat => ({ ...chat, isArchived: true }))
-      );
+      updatedChats = chats.map(chat => ({ ...chat, isArchived: true }));
       toast.success("All chats archived");
     }
+    setChats(updatedChats);
+    localStorage.setItem("chats", JSON.stringify(updatedChats));
+    window.dispatchEvent(new Event("chatsUpdated"));
   };
 
   const handleUnarchiveChat = (chatId?: string) => {
+    let updatedChats: Chat[];
     if (chatId) {
       // Unarchive a specific chat
-      setChats(prevChats =>
-        prevChats.map(chat =>
-          chat.id === chatId
-            ? { ...chat, isArchived: false }
-            : chat
-        )
+      updatedChats = chats.map(chat =>
+        chat.id === chatId
+          ? { ...chat, isArchived: false }
+          : chat
       );
       toast.success("Chat unarchived");
     } else {
       // Unarchive all chats
-      setChats(prevChats =>
-        prevChats.map(chat => ({ ...chat, isArchived: false }))
-      );
+      updatedChats = chats.map(chat => ({ ...chat, isArchived: false }));
       setShowArchived(false);
       toast.success("All chats unarchived");
     }
+    setChats(updatedChats);
+    localStorage.setItem("chats", JSON.stringify(updatedChats));
+    window.dispatchEvent(new Event("chatsUpdated"));
   };
 
   const handleMuteChat = () => {
+    let updatedChats: Chat[];
     if (selectedChatId) {
       const chat = chats.find(c => c.id === selectedChatId);
       const newMuteStatus = !chat?.isMuted;
-      setChats(prevChats =>
-        prevChats.map(c =>
-          c.id === selectedChatId
-            ? { ...c, isMuted: newMuteStatus }
-            : c
-        )
+      updatedChats = chats.map(c =>
+        c.id === selectedChatId
+          ? { ...c, isMuted: newMuteStatus }
+          : c
       );
       toast.success(newMuteStatus ? "Chat muted" : "Chat unmuted");
     } else {
       // Toggle mute for all chats
       const allMuted = chats.every(chat => chat.isMuted);
-      setChats(prevChats =>
-        prevChats.map(chat => ({ ...chat, isMuted: !allMuted }))
-      );
+      updatedChats = chats.map(chat => ({ ...chat, isMuted: !allMuted }));
       toast.success(!allMuted ? "All chats muted" : "All chats unmuted");
     }
+    setChats(updatedChats);
+    localStorage.setItem("chats", JSON.stringify(updatedChats));
+    window.dispatchEvent(new Event("chatsUpdated"));
   };
 
   const handleDeleteChat = () => {
+    let updatedChats: Chat[];
     if (selectedChatId) {
-      setChats(prevChats => prevChats.filter(chat => chat.id !== selectedChatId));
+      updatedChats = chats.filter(chat => chat.id !== selectedChatId);
       navigate("/chat");
       toast.success("Chat deleted");
     } else {
       // Delete all chats
-      setChats([]);
+      updatedChats = [];
       navigate("/chat");
       toast.success("All chats deleted");
     }
+    setChats(updatedChats);
+    localStorage.setItem("chats", JSON.stringify(updatedChats));
+    window.dispatchEvent(new Event("chatsUpdated"));
   };
 
 
@@ -1203,7 +1551,10 @@ const Chat = () => {
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => {
-                            setChats(prevChats => prevChats.filter(c => c.id !== chat.id));
+                            const updatedChats = chats.filter(c => c.id !== chat.id);
+                            setChats(updatedChats);
+                            localStorage.setItem("chats", JSON.stringify(updatedChats));
+                            window.dispatchEvent(new Event("chatsUpdated"));
                             toast.success("Chat deleted");
                           }}
                           className="text-destructive focus:text-destructive"
@@ -1331,35 +1682,15 @@ const Chat = () => {
                         Unarchive Chat
                       </DropdownMenuItem>
                     ) : (
-                      <DropdownMenuItem onClick={() => {
-                        const chat = chats.find(c => c.id === selectedChatId);
-                        if (chat) {
-                          setChats(prevChats =>
-                            prevChats.map(c =>
-                              c.id === selectedChatId
-                                ? { ...c, isArchived: true }
-                                : c
-                            )
-                          );
-                          navigate("/chat");
-                          toast.success("Chat archived");
-                        }
-                      }}>
+                    <DropdownMenuItem onClick={() => {
+                      handleArchiveChat();
+                    }}>
                         <Archive className="mr-2 h-4 w-4" />
                         Archive Chat
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuItem onClick={() => {
-                      const chat = chats.find(c => c.id === selectedChatId);
-                      const newMuteStatus = !chat?.isMuted;
-                      setChats(prevChats =>
-                        prevChats.map(c =>
-                          c.id === selectedChatId
-                            ? { ...c, isMuted: newMuteStatus }
-                            : c
-                        )
-                      );
-                      toast.success(newMuteStatus ? "Chat muted" : "Chat unmuted");
+                      handleMuteChat();
                     }}>
                       {selectedChat.isMuted ? (
                         <>
@@ -1376,11 +1707,7 @@ const Chat = () => {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem 
                       onClick={() => {
-                        if (selectedChatId) {
-                          setChats(prevChats => prevChats.filter(chat => chat.id !== selectedChatId));
-                          navigate("/chat");
-                          toast.success("Chat deleted");
-                        }
+                        handleDeleteChat();
                       }}
                       className="text-destructive focus:text-destructive"
                     >
@@ -1452,6 +1779,17 @@ const Chat = () => {
                       </Button>
                     </>
                   )}
+                </div>
+              ) : selectedChat.messages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center p-8">
+                  <div className="mb-4 p-4 rounded-full bg-primary/10">
+                    <MessageCircle className="h-12 w-12 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">Start a conversation</h3>
+                  <p className="text-muted-foreground mb-4 max-w-md">
+                    You're now connected with <strong>{selectedChat.name}</strong>. 
+                    Start chatting by sending a message below.
+                  </p>
                 </div>
               ) : (
               <div className="space-y-4 pb-4">

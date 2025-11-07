@@ -85,6 +85,8 @@ src/
 │   ├── MyNotes.tsx     # User's personal notes
 │   ├── Reels.tsx       # Video reels
 │   ├── News.tsx        # News & blogs
+│   ├── GroupDiscussion.tsx # Group discussions list
+│   ├── GroupDetail.tsx # Group chat interface
 │   ├── ConnectionSettings.tsx # Connection settings
 │   ├── ProofViewer.tsx # View proofs
 │   └── NotFound.tsx    # 404 page
@@ -119,6 +121,8 @@ src/
 - `/my-notes` - Your personal notes
 - `/reels` - Video reels (coming soon)
 - `/news` - News & blogs
+- `/groups` - Group discussions list
+- `/groups/:id` - Group chat interface
 - `/connection-settings` - Connection and privacy settings
 
 ## 🎯 Features
@@ -137,6 +141,8 @@ src/
 - ✅ Community Notes - Share and discover notes from the community
 - ✅ Personal Notes - Create and manage your own notes
 - ✅ Like and bookmark notes
+- ✅ Group Discussions - Create and join group chats
+- ✅ Group Chat Interface - WhatsApp-style group messaging
 - ✅ Reels (coming soon)
 - ✅ News & Blogs (coming soon)
 
@@ -186,7 +192,8 @@ Authentication is handled via Zustand store with localStorage persistence:
 4. Reels - Video content
 5. Notes - Community notes
 6. News & Blogs - Articles and blogs
-7. Upload - Upload skill proofs
+7. Group Discussion - Group chats and discussions
+8. Upload - Upload skill proofs
 
 **My Account Menu:**
 - Profile
@@ -212,6 +219,7 @@ Authentication is handled via Zustand store with localStorage persistence:
 
 ## 💬 Chat Features
 
+### One-on-One Chats
 - WhatsApp-style interface
 - Message status indicators (sent, delivered, read)
 - Typing indicators
@@ -223,6 +231,18 @@ Authentication is handled via Zustand store with localStorage persistence:
 - Connection request system
 - Archive/unarchive chats
 - Call history
+
+### Group Discussions
+- Create groups with custom names, descriptions, and tags
+- Search groups by name, description, or tags
+- Group chat interface with multiple participants
+- Message sender identification with avatars
+- Group member management
+- Message operations (copy, star, delete)
+- Real-time message updates
+- Group list auto-updates with last message
+- Date separators and timestamps
+- Emoji picker for messages
 
 ## 📝 Notes System
 
@@ -268,6 +288,7 @@ The app is built mobile-first and fully responsive:
 
 - **Authentication**: Zustand store with localStorage
 - **User Notes**: localStorage
+- **Group Discussions**: localStorage (groups, messages, members)
 - **Connection Settings**: localStorage
 - **Theme Preference**: localStorage
 

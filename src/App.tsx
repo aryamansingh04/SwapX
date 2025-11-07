@@ -26,6 +26,8 @@ import Notes from "./pages/Notes";
 import NoteDetail from "./pages/NoteDetail";
 import MyNotes from "./pages/MyNotes";
 import ConnectionSettings from "./pages/ConnectionSettings";
+import GroupDiscussion from "./pages/GroupDiscussion";
+import GroupDetail from "./pages/GroupDetail";
 import News from "./pages/News";
 
 const queryClient = new QueryClient({
@@ -148,6 +150,22 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <ConnectionSettings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/groups"
+              element={
+                <ProtectedRoute>
+                  <GroupDiscussion />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/groups/:id"
+              element={
+                <ProtectedRoute>
+                  <GroupDetail />
                 </ProtectedRoute>
               }
             />

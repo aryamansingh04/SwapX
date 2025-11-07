@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Home, MessageSquare, BarChart3, Upload, User, Menu, X, Users, Video, FileText, Newspaper, Settings } from "lucide-react";
+import { Home, MessageSquare, BarChart3, Upload, User, Menu, X, Users, Video, FileText, Newspaper, Settings, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -32,6 +32,7 @@ const Layout = ({ children }: LayoutProps) => {
     { icon: Video, label: "Reels", path: "/reels" },
     { icon: FileText, label: "Notes", path: "/notes" },
     { icon: Newspaper, label: "News & Blogs", path: "/news" },
+    { icon: MessageCircle, label: "Group Discussion", path: "/groups" },
     { icon: Upload, label: "Upload", path: "/proofs/upload" },
   ];
 

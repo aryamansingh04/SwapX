@@ -1,10 +1,14 @@
-import { Star, Users, Award, TrendingUp } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import { Star, Users, Award, TrendingUp, Calendar, Clock, UserPlus, UserCheck, UserX, Video, MapPin, Check, X } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import AppHeader from "@/components/AppHeader";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import Layout from "@/components/Layout";
 import { useNavigate } from "react-router-dom";
+import { format } from "date-fns";
+import { toast } from "sonner";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -13,7 +17,6 @@ const Dashboard = () => {
     { label: "Total Sessions", value: "24", icon: Users, color: "text-primary" },
     { label: "Average Rating", value: "4.8", icon: Star, color: "text-accent" },
     { label: "Trust Score", value: "92", icon: TrendingUp, color: "text-secondary" },
-    { label: "Badges Earned", value: "5", icon: Award, color: "text-primary" },
   ];
 
   const connections = [
@@ -33,17 +36,137 @@ const Dashboard = () => {
     },
   ];
 
+  // Mock scheduled meetings
+  const [scheduledMeetings, setScheduledMeetings] = useState([
+    {
+      id: "1",
+      attendeeId: "1",
+      attendeeName: "Sarah Johnson",
+      attendeeAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah",
+      date: new Date(Date.now() + 86400000), // Tomorrow
+      time: "10:00",
+      mode: "online" as "online" | "offline",
+      location: null as string | null,
+      link: "https://meet.jit.si/swapx-123456",
+    },
+    {
+      id: "2",
+      attendeeId: "2",
+      attendeeName: "Alex Chen",
+      attendeeAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Alex",
+      date: new Date(Date.now() + 172800000), // Day after tomorrow
+      time: "14:30",
+      mode: "offline" as "online" | "offline",
+      location: "Coffee Shop, Downtown",
+      link: null as string | null,
+    },
+    {
+      id: "3",
+      attendeeId: "3",
+      attendeeName: "Maya Patel",
+      attendeeAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Maya",
+      date: new Date(Date.now() + 259200000), // 3 days from now
+      time: "16:00",
+      mode: "online" as "online" | "offline",
+      location: null as string | null,
+      link: "https://meet.jit.si/swapx-789012",
+    },
+  ]);
+
+  // Mock connection requests
+  const [connectionRequestsReceived, setConnectionRequestsReceived] = useState([
+    {
+      id: "1",
+      userId: "4",
+      name: "Jordan Taylor",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jordan",
+      skill: "React Native",
+      message: "Would love to learn React Native from you!",
+      sentAt: new Date(Date.now() - 3600000), // 1 hour ago
+    },
+    {
+      id: "2",
+      userId: "5",
+      name: "Emma Wilson",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Emma",
+      skill: "UI/UX Design",
+      message: "Interested in learning design principles",
+      sentAt: new Date(Date.now() - 7200000), // 2 hours ago
+    },
+  ]);
+
+  const [connectionRequestsSent, setConnectionRequestsSent] = useState([
+    {
+      id: "1",
+      userId: "6",
+      name: "David Kim",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=David",
+      skill: "Machine Learning",
+      sentAt: new Date(Date.now() - 1800000), // 30 minutes ago
+      status: "pending" as "pending" | "accepted" | "rejected",
+    },
+    {
+      id: "2",
+      userId: "7",
+      name: "Lisa Anderson",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Lisa",
+      skill: "DevOps",
+      sentAt: new Date(Date.now() - 5400000), // 1.5 hours ago
+      status: "pending" as "pending" | "accepted" | "rejected",
+    },
+  ]);
+
+  const handleAcceptConnection = (requestId: string) => {
+    const request = connectionRequestsReceived.find(r => r.id === requestId);
+    if (request) {
+      setConnectionRequestsReceived(prev => prev.filter(r => r.id !== requestId));
+      toast.success(`Connection accepted! You can now chat with ${request.name}`);
+      navigate(`/chat/${request.userId}`);
+    }
+  };
+
+  const handleRejectConnection = (requestId: string) => {
+    const request = connectionRequestsReceived.find(r => r.id === requestId);
+    if (request) {
+      setConnectionRequestsReceived(prev => prev.filter(r => r.id !== requestId));
+      toast.info(`Connection request from ${request.name} declined`);
+    }
+  };
+
+  const handleCancelConnectionRequest = (requestId: string) => {
+    const request = connectionRequestsSent.find(r => r.id === requestId);
+    if (request) {
+      setConnectionRequestsSent(prev => prev.filter(r => r.id !== requestId));
+      toast.info(`Connection request to ${request.name} cancelled`);
+    }
+  };
+
+  const handleJoinMeeting = (meeting: typeof scheduledMeetings[0]) => {
+    if (meeting.mode === "online" && meeting.link) {
+      window.open(meeting.link, "_blank");
+      toast.success("Opening meeting...");
+    } else {
+      navigate(`/meeting/${meeting.attendeeId}`);
+    }
+  };
+
+  const handleCancelMeeting = (meetingId: string) => {
+    const meeting = scheduledMeetings.find(m => m.id === meetingId);
+    if (meeting) {
+      setScheduledMeetings(prev => prev.filter(m => m.id !== meetingId));
+      toast.success(`Meeting with ${meeting.attendeeName} cancelled`);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-[image:var(--gradient-soft)]">
-      <AppHeader />
-      
-      <main className="container mx-auto px-4 py-8">
+    <Layout>
+      <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
+          <h1 className="text-3xl font-bold mb-2">Home</h1>
           <p className="text-muted-foreground">Track your learning journey</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {stats.map((stat) => {
             const Icon = stat.icon;
             return (
@@ -60,7 +183,164 @@ const Dashboard = () => {
           })}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Badges Card - Full width */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Award className="h-5 w-5 text-primary" />
+              Badges Earned
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 md:grid-cols-5 gap-4">
+              {[
+                { name: "First Session", emoji: "🎉" },
+                { name: "10 Sessions", emoji: "🔥" },
+                { name: "Great Teacher", emoji: "⭐" },
+                { name: "Fast Learner", emoji: "🚀" },
+                { name: "Community Hero", emoji: "💪" },
+              ].map((badge) => (
+                <div key={badge.name} className="flex flex-col items-center p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                  <div className="text-4xl mb-2">{badge.emoji}</div>
+                  <p className="text-xs text-center font-medium">{badge.name}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Connection Requests and Active Connections Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* Connection Requests */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Users className="h-4 w-4 text-primary" />
+                Connection Requests
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <Tabs defaultValue="received" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 h-9">
+                  <TabsTrigger value="received" className="flex items-center gap-1.5 text-xs">
+                    <UserPlus className="h-3.5 w-3.5" />
+                    Received
+                    {connectionRequestsReceived.length > 0 && (
+                      <Badge variant="secondary" className="ml-1 h-4 px-1.5 text-xs">
+                        {connectionRequestsReceived.length}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger value="sent" className="flex items-center gap-1.5 text-xs">
+                    <UserCheck className="h-3.5 w-3.5" />
+                    Sent
+                    {connectionRequestsSent.length > 0 && (
+                      <Badge variant="secondary" className="ml-1 h-4 px-1.5 text-xs">
+                        {connectionRequestsSent.length}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* Received Requests Tab */}
+                <TabsContent value="received" className="space-y-2 mt-3">
+                  {connectionRequestsReceived.length === 0 ? (
+                    <div className="text-center py-6 text-muted-foreground">
+                      <UserPlus className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No pending connection requests</p>
+                    </div>
+                  ) : (
+                    connectionRequestsReceived.map((request) => (
+                      <div key={request.id} className="p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center gap-2.5 mb-2">
+                          <Avatar className="h-9 w-9">
+                            <AvatarImage src={request.avatar} alt={request.name} />
+                            <AvatarFallback className="text-xs">{request.name[0]}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm">{request.name}</p>
+                            <p className="text-xs text-muted-foreground">Wants to learn: {request.skill}</p>
+                            <p className="text-xs text-muted-foreground line-clamp-1">{request.message}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            className="flex-1 h-8 text-xs"
+                            onClick={() => handleAcceptConnection(request.id)}
+                          >
+                            <UserCheck className="h-3.5 w-3.5 mr-1.5" />
+                            Accept
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 h-8 text-xs"
+                            onClick={() => handleRejectConnection(request.id)}
+                          >
+                            <UserX className="h-3.5 w-3.5 mr-1.5" />
+                            Decline
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </TabsContent>
+
+                {/* Sent Requests Tab */}
+                <TabsContent value="sent" className="space-y-2 mt-3">
+                  {connectionRequestsSent.length === 0 ? (
+                    <div className="text-center py-6 text-muted-foreground">
+                      <UserCheck className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No pending requests</p>
+                    </div>
+                  ) : (
+                    connectionRequestsSent.map((request) => (
+                      <div key={request.id} className="p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center gap-2.5 mb-2">
+                          <Avatar className="h-9 w-9">
+                            <AvatarImage src={request.avatar} alt={request.name} />
+                            <AvatarFallback className="text-xs">{request.name[0]}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 mb-0.5">
+                              <p className="font-medium text-sm">{request.name}</p>
+                              {request.status === "pending" && (
+                                <Badge variant="outline" className="text-xs h-4 px-1.5">
+                                  <Clock className="h-2.5 w-2.5 mr-1" />
+                                  Pending
+                                </Badge>
+                              )}
+                              {request.status === "accepted" && (
+                                <Badge variant="default" className="text-xs h-4 px-1.5 bg-green-500">
+                                  <Check className="h-2.5 w-2.5 mr-1" />
+                                  Accepted
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">Wants to learn: {request.skill}</p>
+                          </div>
+                        </div>
+                        {request.status === "pending" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full h-8 text-xs"
+                            onClick={() => handleCancelConnectionRequest(request.id)}
+                          >
+                            <X className="h-3.5 w-3.5 mr-1.5" />
+                            Cancel Request
+                          </Button>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+
+          {/* Active Connections */}
           <Card>
             <CardHeader>
               <CardTitle>Active Connections</CardTitle>
@@ -90,31 +370,113 @@ const Dashboard = () => {
               ))}
             </CardContent>
           </Card>
+        </div>
 
-          <Card>
+        {/* Scheduled Meetings Section */}
+        <Card className="mb-6">
             <CardHeader>
-              <CardTitle>Badges & Achievements</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              Scheduled Meetings
+              {scheduledMeetings.length > 0 && (
+                <Badge variant="secondary" className="ml-auto">
+                  {scheduledMeetings.length}
+                </Badge>
+              )}
+            </CardTitle>
+            <CardDescription>
+              Your upcoming sessions
+            </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-4">
-                {[
-                  { name: "First Session", emoji: "🎉" },
-                  { name: "10 Sessions", emoji: "🔥" },
-                  { name: "Great Teacher", emoji: "⭐" },
-                  { name: "Fast Learner", emoji: "🚀" },
-                  { name: "Community Hero", emoji: "💪" },
-                ].map((badge) => (
-                  <div key={badge.name} className="flex flex-col items-center p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                    <div className="text-4xl mb-2">{badge.emoji}</div>
-                    <p className="text-xs text-center font-medium">{badge.name}</p>
+            {scheduledMeetings.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p>No scheduled meetings</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-4"
+                  onClick={() => navigate("/home")}
+                >
+                  Find Someone to Meet
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {scheduledMeetings.map((meeting) => (
+                  <div key={meeting.id} className="p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
+                    <div className="flex items-start gap-4">
+                      <Avatar className="h-14 w-14">
+                        <AvatarImage src={meeting.attendeeAvatar} alt={meeting.attendeeName} />
+                        <AvatarFallback>{meeting.attendeeName[0]}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <p className="font-semibold text-lg">{meeting.attendeeName}</p>
+                            <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-4 w-4" />
+                                {format(meeting.date, "MMM d, yyyy")}
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-4 w-4" />
+                                {meeting.time}
+                              </div>
+                              <div className="flex items-center gap-1">
+                                {meeting.mode === "online" ? (
+                                  <>
+                                    <Video className="h-4 w-4" />
+                                    <span>Online</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <MapPin className="h-4 w-4" />
+                                    <span>{meeting.location}</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 mt-3">
+                          {meeting.mode === "online" && meeting.link && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleJoinMeeting(meeting)}
+                            >
+                              <Video className="h-4 w-4 mr-2" />
+                              Join Meeting
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => navigate(`/chat/${meeting.attendeeId}`)}
+                          >
+                            Chat
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleCancelMeeting(meeting.id)}
+                          >
+                            <X className="h-4 w-4 mr-2" />
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
+            )}
             </CardContent>
           </Card>
+
         </div>
-      </main>
-    </div>
+    </Layout>
   );
 };
 

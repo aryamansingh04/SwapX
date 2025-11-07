@@ -1,4 +1,4 @@
-import { MessageCircle, Calendar, Star, FileText, Video, Image as ImageIcon } from "lucide-react";
+import { MessageCircle, Calendar, Star, FileText } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -42,13 +42,18 @@ const ProfileModal = ({ user, isOpen, onClose }: ProfileModalProps) => {
     }, 1000);
   };
 
-  const getProofIcon = (type: string) => {
-    switch (type) {
-      case "video": return <Video className="h-4 w-4" />;
-      case "pdf": return <FileText className="h-4 w-4" />;
-      default: return <ImageIcon className="h-4 w-4" />;
-    }
+  const handleProofClick = (proofUrl: string, skill: string) => {
+    // Navigate to proof viewer page with the PDF URL as query parameter
+    const params = new URLSearchParams({
+      url: proofUrl,
+      skill: skill,
+    });
+    navigate(`/proof?${params.toString()}`);
+    onClose(); // Close the modal when navigating
   };
+
+  // Filter to show only PDF proofs
+  const pdfProofs = user.proofs.filter(proof => proof.type === "pdf");
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -100,18 +105,22 @@ const ProfileModal = ({ user, isOpen, onClose }: ProfileModalProps) => {
             </div>
           </div>
 
-          {user.proofs.length > 0 && (
+          {pdfProofs.length > 0 && (
             <div>
               <h3 className="font-semibold mb-3">Skill Proofs</h3>
               <div className="grid grid-cols-2 gap-3">
-                {user.proofs.map((proof, idx) => (
-                  <div key={idx} className="p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors">
+                {pdfProofs.map((proof, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleProofClick(proof.url, proof.skill)}
+                    className="p-3 border rounded-lg hover:bg-muted/50 hover:border-primary/50 cursor-pointer transition-colors text-left group"
+                  >
                     <div className="flex items-center gap-2">
-                      {getProofIcon(proof.type)}
+                      <FileText className="h-4 w-4 text-primary group-hover:scale-110 transition-transform" />
                       <span className="text-sm font-medium">{proof.skill}</span>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1 capitalize">{proof.type} proof</p>
-                  </div>
+                    <p className="text-xs text-muted-foreground mt-1">PDF proof</p>
+                  </button>
                 ))}
               </div>
             </div>

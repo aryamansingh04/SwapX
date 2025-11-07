@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import AppHeader from "@/components/AppHeader";
+import Layout from "@/components/Layout";
 import { toast } from "sonner";
 
 const ProofUpload = () => {
@@ -35,10 +35,8 @@ const ProofUpload = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[image:var(--gradient-soft)]">
-      <AppHeader />
-      
-      <main className="container mx-auto px-4 py-8 max-w-2xl">
+    <Layout>
+      <div className="container mx-auto px-4 py-8 max-w-2xl">
         <Card>
           <CardHeader>
             <CardTitle className="text-2xl">Upload Skill Proof</CardTitle>
@@ -47,12 +45,21 @@ const ProofUpload = () => {
             <form onSubmit={handleUpload} className="space-y-6">
               <div className="space-y-3">
                 <Label htmlFor="skill">Skill Name</Label>
-                <Input id="skill" placeholder="e.g., React, Python, UI Design" required />
+                <Input
+                  id="skill"
+                  placeholder="e.g., React, Python, UI Design"
+                  required
+                  aria-required="true"
+                />
               </div>
 
               <div className="space-y-3">
                 <Label>Proof Type</Label>
-                <RadioGroup value={proofType} onValueChange={(v) => setProofType(v as any)}>
+                <RadioGroup
+                  value={proofType}
+                  onValueChange={(v) => setProofType(v as "video" | "pdf" | "image")}
+                  aria-label="Proof type selection"
+                >
                   <div className="flex items-center space-x-2 p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer">
                     <RadioGroupItem value="video" id="video" />
                     <Label htmlFor="video" className="flex-1 cursor-pointer flex items-center gap-2">
@@ -96,6 +103,7 @@ const ProofUpload = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => setSelectedFile(null)}
+                        aria-label="Remove file"
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -115,6 +123,7 @@ const ProofUpload = () => {
                           proofType === "pdf" ? ".pdf" :
                           "image/*"
                         }
+                        aria-label="File upload"
                       />
                     </label>
                   )}
@@ -127,9 +136,10 @@ const ProofUpload = () => {
             </form>
           </CardContent>
         </Card>
-      </main>
-    </div>
+      </div>
+    </Layout>
   );
 };
 
 export default ProofUpload;
+

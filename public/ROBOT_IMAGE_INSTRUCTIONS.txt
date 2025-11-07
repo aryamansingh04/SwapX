@@ -1,0 +1,14 @@
+To add your robot image:
+
+1. Place your robot image file in this folder (public/)
+2. Name it one of these:
+   - robot.png (recommended)
+   - robot.jpg
+   - robot.jpeg
+   - robot.webp
+   - robot.svg
+
+3. The image will automatically appear on the landing page
+4. Supported formats: PNG, JPG, JPEG, WEBP, SVG
+
+The code will try different formats automatically if the first one doesn't exist.

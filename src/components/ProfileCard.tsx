@@ -18,8 +18,8 @@ interface ProfileCardProps {
 
 const ProfileCard = ({ user, onViewProfile }: ProfileCardProps) => {
   return (
-    <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 border-2 hover:border-primary/20">
-      <CardContent className="p-6">
+    <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 border-2 hover:border-primary/20 flex flex-col h-full">
+      <CardContent className="p-6 flex-1 flex flex-col">
         <div className="flex items-start gap-4 mb-4">
           <Avatar className="h-16 w-16 border-2 border-primary/20">
             <AvatarImage src={user.avatar} alt={user.name} />
@@ -38,7 +38,7 @@ const ProfileCard = ({ user, onViewProfile }: ProfileCardProps) => {
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-2 flex-1">
           <p className="text-sm font-medium">Teaching:</p>
           <div className="flex flex-wrap gap-2">
             {user.skillsKnown.slice(0, 3).map((skill) => (
@@ -49,7 +49,7 @@ const ProfileCard = ({ user, onViewProfile }: ProfileCardProps) => {
           </div>
         </div>
       </CardContent>
-      <CardFooter className="p-6 pt-0">
+      <CardFooter className="p-6 pt-0 mt-auto">
         <Button onClick={onViewProfile} className="w-full">View Profile</Button>
       </CardFooter>
     </Card>

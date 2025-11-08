@@ -22,6 +22,12 @@ import {
 import { toast } from "sonner";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useProfileStore } from "@/stores/useProfileStore";
+import { createMyProfile, updateMyProfile, getMyProfile } from "@/lib/profile";
+import { useAuthUser } from "@/hooks/useAuthUser";
+import { Auth } from "@supabase/auth-ui-react";
+import { ThemeSupa } from "@supabase/auth-ui-shared";
+import { supabase } from "@/lib/supabase";
+import { Loader2 } from "lucide-react";
 
 const OCCUPATIONS = [
   "Student",
@@ -74,14 +80,18 @@ const ProfileSetup = () => {
   const navigate = useNavigate();
   const { user, setUser } = useAuthStore();
   const { getProfile, updateProfile, setProfile } = useProfileStore();
+  const { user: supabaseUser, loading: authLoading } = useAuthUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [existingSupabaseProfile, setExistingSupabaseProfile] = useState<any>(null);
   
-  // Load existing profile data if available
+  // Load existing profile data if available (from localStorage)
   const existingProfile = user ? getProfile(user.id) : null;
   
-  const [name, setName] = useState(existingProfile?.name || user?.name || "");
+  // Initialize state
+  const [name, setName] = useState(existingProfile?.name || user?.name || supabaseUser?.user_metadata?.full_name || "");
   const [occupation, setOccupation] = useState(existingProfile?.occupation || "");
-  const [avatar, setAvatar] = useState(existingProfile?.avatar || user?.avatar || AVATAR_PRESETS[0]);
+  const [avatar, setAvatar] = useState(existingProfile?.avatar || user?.avatar || supabaseUser?.user_metadata?.avatar_url || AVATAR_PRESETS[0]);
   const [avatarMode, setAvatarMode] = useState<"upload" | "preset">("preset");
   const [avatarDropdownOpen, setAvatarDropdownOpen] = useState(false);
   const [skillInput, setSkillInput] = useState("");
@@ -89,12 +99,94 @@ const ProfileSetup = () => {
   const [skillToLearnInput, setSkillToLearnInput] = useState("");
   const [skillsToLearn, setSkillsToLearn] = useState<string[]>(existingProfile?.skillsToLearn || []);
   
-  // Redirect if not authenticated
+  // Check if profile exists in Supabase and load it
   useEffect(() => {
-    if (!user) {
-      navigate("/auth/login");
-    }
-  }, [user, navigate]);
+    const checkSupabaseProfile = async () => {
+      if (supabaseUser) {
+        try {
+          const profile = await getMyProfile();
+          if (profile) {
+            setExistingSupabaseProfile(profile);
+            console.log("Loaded existing profile from Supabase for editing:", {
+              full_name: profile.full_name,
+              bio: profile.bio,
+              skills: profile.skills,
+              skills_to_learn: profile.skills_to_learn,
+              avatar_url: profile.avatar_url,
+            });
+            
+            // Profile exists in Supabase, pre-fill form (prioritize Supabase data)
+            if (profile.full_name || profile.username) {
+              setName(profile.full_name || profile.username || "");
+            }
+            if (profile.bio) {
+              setOccupation(profile.bio);
+            }
+            if (profile.avatar_url) {
+              setAvatar(profile.avatar_url);
+            }
+            if (profile.skills && profile.skills.length > 0) {
+              setSkills(profile.skills);
+            } else {
+              setSkills([]); // Clear skills if not in Supabase
+            }
+            if (profile.skills_to_learn && profile.skills_to_learn.length > 0) {
+              setSkillsToLearn(profile.skills_to_learn);
+            } else {
+              setSkillsToLearn([]); // Clear skills to learn if not in Supabase
+            }
+          } else {
+            console.log("No existing profile found in Supabase, using localStorage/default values");
+          }
+        } catch (error) {
+          // Profile doesn't exist yet - that's fine for new users
+          if (error instanceof Error && 
+              !error.message.includes("PGRST116") && 
+              !error.message.includes("No rows") &&
+              !error.message.includes("not authenticated")) {
+            console.error("Error loading profile:", error);
+          }
+        }
+      }
+    };
+    checkSupabaseProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabaseUser]);
+  
+  // Listen for auth state changes after successful sign-in
+  useEffect(() => {
+    let mounted = true;
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_IN" && session?.user && mounted) {
+        // User just signed in, reload profile data
+        try {
+          const profile = await getMyProfile();
+          if (profile && mounted) {
+            setName(profile.full_name || profile.username || "");
+            if (profile.avatar_url) setAvatar(profile.avatar_url);
+            if (profile.skills && profile.skills.length > 0) setSkills(profile.skills);
+            if (profile.skills_to_learn && profile.skills_to_learn.length > 0) setSkillsToLearn(profile.skills_to_learn);
+          }
+        } catch (error) {
+          // Profile doesn't exist yet - that's fine
+          if (error instanceof Error && 
+              !error.message.includes("PGRST116") && 
+              !error.message.includes("No rows") &&
+              !error.message.includes("not authenticated")) {
+            console.error("Error loading profile after sign-in:", error);
+          }
+        }
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -140,11 +232,12 @@ const ProfileSetup = () => {
     setSkillsToLearn(skillsToLearn.filter(s => s !== skill));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) {
+    
+    if (!supabaseUser) {
       toast.error("You must be logged in to save your profile");
-      navigate("/auth/login");
+      navigate("/");
       return;
     }
     
@@ -157,41 +250,238 @@ const ProfileSetup = () => {
       return;
     }
     
-    // Update profile in profile store (this is the user's isolated profile data)
-    if (existingProfile) {
-      // Update existing profile
-      updateProfile(user.id, {
-        name: name.trim(),
-        avatar,
-        occupation,
-        skills,
-        skillsToLearn,
-      });
-    } else {
-      // Create new profile
-      setProfile({
-        id: user.id,
-        email: user.email,
-        name: name.trim(),
-        avatar,
-        occupation,
-        skills,
-        skillsToLearn,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-    }
+    setIsLoading(true);
     
-    // Also update auth store with basic user info
+    try {
+      // Check if profile exists in Supabase
+      let existingSupabaseProfile = null;
+      try {
+        existingSupabaseProfile = await getMyProfile();
+      } catch (error) {
+        // Profile doesn't exist yet, which is fine for new users
+        // PGRST116 = no rows returned, "No rows" = alternative message
+        if (error instanceof Error && (error.message.includes("PGRST116") || error.message.includes("No rows"))) {
+          existingSupabaseProfile = null;
+        } else if (error instanceof Error && error.message.includes("not authenticated")) {
+          // User not authenticated - should have been caught earlier but handle gracefully
+          toast.error("You must be logged in to save your profile");
+          navigate("/");
+          return;
+        } else {
+          // Re-throw other errors
+          throw error;
+        }
+      }
+      
+      let skillsToLearnSaved = true;
+      if (existingSupabaseProfile) {
+        // Update existing profile in Supabase
+        try {
+          const updatedProfile = await updateMyProfile({
+            full_name: name.trim(),
+            username: name.trim().toLowerCase().replace(/\s+/g, '_'),
+            avatar_url: avatar,
+            bio: occupation,
+            skills: skills,
+            skills_to_learn: skillsToLearn,
+            desired_skills: skillsToLearn, // Sync desired_skills with skills_to_learn
+          });
+          console.log("Profile updated successfully in Supabase:", updatedProfile);
+          setExistingSupabaseProfile(updatedProfile);
+        } catch (updateError) {
+          console.error("Error updating profile in Supabase:", updateError);
+          // If update fails due to missing column, try without skills_to_learn
+          if (updateError instanceof Error && 
+              (updateError.message.includes("skills_to_learn") || 
+               updateError.message.includes("42703") ||
+               updateError.message.includes("column") && updateError.message.includes("does not exist"))) {
+            console.warn("skills_to_learn column may not exist. Updating without it...");
+            const updatedProfileWithoutSkills = await updateMyProfile({
+              full_name: name.trim(),
+              username: name.trim().toLowerCase().replace(/\s+/g, '_'),
+              avatar_url: avatar,
+              bio: occupation,
+              skills: skills,
+            });
+            console.log("Profile updated (without skills_to_learn):", updatedProfileWithoutSkills);
+            setExistingSupabaseProfile(updatedProfileWithoutSkills);
+            skillsToLearnSaved = false;
+            toast.warning("Profile saved! Note: 'Skills to learn' column doesn't exist in database. Other fields saved successfully.");
+          } else {
+            throw updateError;
+          }
+        }
+      } else {
+        // Create new profile in Supabase
+        try {
+          const createdProfile = await createMyProfile({
+            username: name.trim().toLowerCase().replace(/\s+/g, '_'),
+            full_name: name.trim(),
+            avatar_url: avatar,
+            bio: occupation,
+            skills: skills,
+            skills_to_learn: skillsToLearn,
+            desired_skills: skillsToLearn, // Sync desired_skills with skills_to_learn
+          });
+          console.log("Profile created successfully in Supabase:", createdProfile);
+          setExistingSupabaseProfile(createdProfile);
+        } catch (createError) {
+          console.error("Error creating profile in Supabase:", createError);
+          // If create fails due to missing column, try without skills_to_learn
+          if (createError instanceof Error && 
+              (createError.message.includes("skills_to_learn") || 
+               createError.message.includes("42703") ||
+               createError.message.includes("column") && createError.message.includes("does not exist"))) {
+            console.warn("skills_to_learn column may not exist. Creating without it...");
+            const createdProfileWithoutSkills = await createMyProfile({
+              username: name.trim().toLowerCase().replace(/\s+/g, '_'),
+              full_name: name.trim(),
+              avatar_url: avatar,
+              bio: occupation,
+              skills: skills,
+            });
+            console.log("Profile created (without skills_to_learn):", createdProfileWithoutSkills);
+            setExistingSupabaseProfile(createdProfileWithoutSkills);
+            skillsToLearnSaved = false;
+            toast.warning("Profile saved! Note: 'Skills to learn' column doesn't exist in database. Other fields saved successfully.");
+          } else {
+            throw createError;
+          }
+        }
+      }
+      
+      // Also update local profile store for offline access
+      const userId = supabaseUser.id;
+      if (existingProfile) {
+        updateProfile(userId, {
+          name: name.trim(),
+          avatar,
+          occupation,
+          skills,
+          skillsToLearn,
+        });
+      } else {
+        setProfile({
+          id: userId,
+          email: supabaseUser.email || "",
+          name: name.trim(),
+          avatar,
+          occupation,
+          skills,
+          skillsToLearn,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      }
+      
+      // Update auth store with basic user info
+      if (user) {
     setUser({
-      ...user,
+          ...user,
       name: name.trim(),
       avatar,
     });
+      }
     
-    toast.success("Profile saved successfully! Your data is stored securely in your profile.");
-    setTimeout(() => navigate("/home"), 1000);
+      toast.success("Profile saved successfully!");
+      setIsLoading(false);
+      
+      // Log what was saved for debugging
+      console.log("Profile saved successfully with data:", {
+        name: name.trim(),
+        occupation,
+        skills: skills,
+        skillsToLearn: skillsToLearn,
+        skillsToLearnSaved: skillsToLearnSaved,
+        avatar,
+      });
+      
+      // Verify the save by reloading from Supabase
+      try {
+        const verifyProfile = await getMyProfile();
+        if (verifyProfile) {
+          console.log("Verified saved profile from Supabase:", {
+            full_name: verifyProfile.full_name,
+            bio: verifyProfile.bio,
+            skills: verifyProfile.skills,
+            skills_to_learn: verifyProfile.skills_to_learn,
+            avatar_url: verifyProfile.avatar_url,
+          });
+        }
+      } catch (verifyError) {
+        console.warn("Could not verify saved profile:", verifyError);
+      }
+      
+      // Ensure navigation happens even if there are issues
+      try {
+        // Small delay to ensure UI updates and toast is visible, and Supabase has time to sync
+        setTimeout(() => {
+          console.log("Navigating to /profile after profile save to show updated data");
+          // Navigate to profile page to show the updated data immediately
+          navigate("/profile", { replace: true, state: { refresh: true, timestamp: Date.now() } });
+        }, 800);
+      } catch (navError) {
+        console.error("Navigation error:", navError);
+        // Fallback: use window.location as last resort
+        setTimeout(() => {
+          window.location.href = "/profile";
+        }, 800);
+      }
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to save profile. Please try again.");
+      setIsLoading(false);
+    }
   };
+
+  // Show loading state while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-[image:var(--gradient-soft)]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Show authentication UI if not authenticated
+  if (!supabaseUser && !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-[image:var(--gradient-soft)]">
+        <div className="w-full max-w-md">
+          <Card className="backdrop-blur-sm bg-card/95 shadow-2xl border-2">
+            <CardHeader>
+              <div className="flex justify-center mb-4">
+                <img src="/swapx-logo.svg" alt="SwapX" className="h-10" />
+              </div>
+              <CardTitle className="text-2xl font-bold text-center">Get Started</CardTitle>
+              <CardDescription className="text-center">
+                Sign in to create your profile and start learning
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Auth
+                supabaseClient={supabase}
+                appearance={{
+                  theme: ThemeSupa,
+                  style: {
+                    button: {
+                      borderRadius: "0.5rem",
+                    },
+                    input: {
+                      borderRadius: "0.5rem",
+                    },
+                  },
+                }}
+                view="sign_up"
+                providers={["google", "github"]}
+                redirectTo={`${window.location.origin}/home`}
+              />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-[image:var(--gradient-soft)]">
@@ -390,8 +680,8 @@ const ProfileSetup = () => {
                 )}
               </div>
 
-              <Button type="submit" className="w-full h-12 text-base" size="lg">
-                Complete Profile
+              <Button type="submit" className="w-full h-12 text-base" size="lg" disabled={isLoading}>
+                {isLoading ? "Saving..." : "Complete Profile"}
               </Button>
             </form>
           </CardContent>

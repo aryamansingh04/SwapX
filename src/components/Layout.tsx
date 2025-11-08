@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Home, MessageSquare, BarChart3, Upload, User, Menu, X, Users, Video, FileText, Newspaper, Settings, MessageCircle, Bookmark, Bell, HelpCircle, Info, Clock } from "lucide-react";
+import { Home, MessageSquare, BarChart3, Upload, User, Menu, X, Users, Video, FileText, Newspaper, Settings, MessageCircle, Bookmark, Bell, HelpCircle, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -444,7 +444,10 @@ const Layout = ({ children }: LayoutProps) => {
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={() => handleNavigate(`/profile/${user?.id || "setup"}`)}
+                  onClick={async () => {
+                    // Always navigate to /profile which will show current user's profile
+                    handleNavigate("/profile");
+                  }}
                   role="menuitem"
                 >
                   <User className="h-4 w-4 mr-2" aria-hidden="true" />
@@ -461,10 +464,6 @@ const Layout = ({ children }: LayoutProps) => {
                 <DropdownMenuItem onClick={() => handleNavigate("/connection-settings")} role="menuitem">
                   <Settings className="h-4 w-4 mr-2" aria-hidden="true" />
                   Connection Settings
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleNavigate("/availability")} role="menuitem">
-                  <Clock className="h-4 w-4 mr-2" aria-hidden="true" />
-                  Availability Settings
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => handleNavigate("/faq")} role="menuitem">
@@ -534,7 +533,10 @@ const Layout = ({ children }: LayoutProps) => {
                     <Button
                       variant="ghost"
                       className="w-full justify-start"
-                      onClick={() => handleNavigate(`/profile/${user?.id || "setup"}`)}
+                      onClick={() => {
+                        // Always navigate to /profile which will show current user's profile
+                        handleNavigate("/profile");
+                      }}
                     >
                       <User className="h-4 w-4 mr-2" aria-hidden="true" />
                       Profile

@@ -1,21 +1,42 @@
-import { useState } from "react";
-import { Search, Filter, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, Filter, X, Calendar, Video, MapPin, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ProfileCard from "@/components/ProfileCard";
 import ProfileModal from "@/components/ProfileModal";
 import Layout from "@/components/Layout";
 import { mockUsers } from "@/data/mockUsers";
+import { format, isToday, isTomorrow, isPast, isFuture } from "date-fns";
+import { useNavigate } from "react-router-dom";
+
+interface ScheduledMeeting {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  scheduledBy: string;
+  scheduledByName: string;
+  date: string;
+  mode: "online" | "offline";
+  location: string | null;
+  link: string | null;
+  createdAt: string;
+}
 
 const Home = () => {
+  const navigate = useNavigate();
   const [selectedUser, setSelectedUser] = useState<typeof mockUsers[0] | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [minTrustScore, setMinTrustScore] = useState<number>(0);
+  const [scheduledMeetings, setScheduledMeetings] = useState<ScheduledMeeting[]>([]);
 
   // Get all unique skills from users
   const allSkills = Array.from(
@@ -54,12 +75,125 @@ const Home = () => {
 
   const activeFilterCount = selectedSkills.length + (minTrustScore > 0 ? 1 : 0);
 
+  // Load scheduled meetings
+  useEffect(() => {
+    const loadMeetings = () => {
+      const meetings = JSON.parse(localStorage.getItem("scheduledMeetings") || "[]");
+      // Filter out past meetings (older than the meeting time)
+      const now = new Date();
+      const upcomingMeetings = meetings.filter((meeting: ScheduledMeeting) => {
+        const meetingDate = new Date(meeting.date);
+        return meetingDate >= now;
+      });
+      // Sort by date (upcoming first)
+      upcomingMeetings.sort((a: ScheduledMeeting, b: ScheduledMeeting) => {
+        return new Date(a.date).getTime() - new Date(b.date).getTime();
+      });
+      setScheduledMeetings(upcomingMeetings);
+    };
+
+    loadMeetings();
+    
+    // Listen for meeting updates
+    const handleMeetingsUpdate = () => {
+      loadMeetings();
+    };
+    window.addEventListener("meetingsUpdated", handleMeetingsUpdate);
+    
+    return () => {
+      window.removeEventListener("meetingsUpdated", handleMeetingsUpdate);
+    };
+  }, []);
+
+  const formatMeetingDate = (dateString: string) => {
+    const date = new Date(dateString);
+    if (isToday(date)) {
+      return `Today at ${format(date, "h:mm a")}`;
+    } else if (isTomorrow(date)) {
+      return `Tomorrow at ${format(date, "h:mm a")}`;
+    } else {
+      return format(date, "MMM d, yyyy 'at' h:mm a");
+    }
+  };
+
   return (
     <Layout>
       <div className="flex flex-col h-[calc(100vh-4rem)]">
         <div className="container mx-auto px-4 py-6 flex-shrink-0">
           <div className="mb-6">
             <h1 className="text-3xl font-bold mb-4">People</h1>
+            
+            {/* Scheduled Meetings Section */}
+            {scheduledMeetings.length > 0 && (
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Calendar className="h-5 w-5" />
+                    Upcoming Meetings
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {scheduledMeetings.slice(0, 5).map((meeting) => {
+                      const meetingDate = new Date(meeting.date);
+                      const isUpcoming = isFuture(meetingDate);
+                      
+                      return (
+                        <div
+                          key={meeting.id}
+                          className="flex items-center gap-4 p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                          onClick={() => navigate(`/chat/${meeting.userId}`)}
+                        >
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage src={meeting.userAvatar} alt={meeting.userName} />
+                            <AvatarFallback>{meeting.userName[0]}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="font-medium text-sm">{meeting.userName}</p>
+                              <Badge variant={isUpcoming ? "default" : "secondary"} className="text-xs">
+                                {meeting.mode === "online" ? (
+                                  <Video className="h-3 w-3 mr-1" />
+                                ) : (
+                                  <MapPin className="h-3 w-3 mr-1" />
+                                )}
+                                {meeting.mode === "online" ? "Online" : "Offline"}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Clock className="h-3 w-3" />
+                              <span>{formatMeetingDate(meeting.date)}</span>
+                              {meeting.mode === "offline" && meeting.location && (
+                                <>
+                                  <span>•</span>
+                                  <span className="truncate">{meeting.location}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/chat/${meeting.userId}`);
+                            }}
+                          >
+                            View Chat
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {scheduledMeetings.length > 5 && (
+                    <p className="text-xs text-muted-foreground mt-3 text-center">
+                      +{scheduledMeetings.length - 5} more meetings
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+            
             <div className="flex gap-3">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

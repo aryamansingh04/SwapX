@@ -1,25 +1,279 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Award, Star, Github, Linkedin, Clock, Calendar, Settings } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Award, Star, Github, Linkedin, Pencil, FileText, ChevronDown, ChevronUp, Upload, AlertCircle, CheckCircle2, X } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { useProfileStore, WeeklyAvailability } from "@/stores/useProfileStore";
+import { useProfileStore } from "@/stores/useProfileStore";
+import { useAuthUser } from "@/hooks/useAuthUser";
+import { getMyProfile, getProfileById } from "@/lib/profile";
+import { getUserProofs, ProofWithSkill, saveProof } from "@/lib/proofs";
+import { uploadProof } from "@/lib/storage";
 import { mockUsers } from "@/data/mockUsers";
-import { format } from "date-fns";
+import { useEffect, useState, useRef } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { toast } from "sonner";
 
 const Profile = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuthStore();
+  const { user: supabaseUser } = useAuthUser();
   const { getProfile } = useProfileStore();
+  const [supabaseProfile, setSupabaseProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [proofs, setProofs] = useState<ProofWithSkill[]>([]);
+  const [expandedProof, setExpandedProof] = useState<{ url: string; skill: string } | null>(null);
+  const [expandedSkill, setExpandedSkill] = useState<string | null>(null);
+  const [uploadingProofs, setUploadingProofs] = useState<Record<string, boolean>>({});
+  const [selectedFiles, setSelectedFiles] = useState<Record<string, File>>({});
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   
-  // Check if viewing own profile or another user's profile
-  const isOwnProfile = id === user?.id || !id;
-  const profileId = id || user?.id;
+  // Track if we need to force a refresh
+  const [refreshKey, setRefreshKey] = useState(0);
+  
+  // Calculate if viewing own profile early (before useEffect hooks)
+  const currentUserId = supabaseUser?.id || user?.id;
+  const isOwnProfile = !id || id === currentUserId || id === user?.id;
+  const profileId = id || currentUserId;
+  
+  // Load profile and proofs from Supabase
+  useEffect(() => {
+    const loadProfileAndProofs = async () => {
+      // Use the pre-calculated values
+      if (isOwnProfile && supabaseUser) {
+        try {
+          setLoading(true);
+          const profile = await getMyProfile();
+          if (profile) {
+            console.log("Loaded profile from Supabase:", {
+              id: profile.id,
+              skills: profile.skills,
+              skills_to_learn: profile.skills_to_learn,
+            });
+            setSupabaseProfile(profile);
+          } else {
+            setSupabaseProfile(null);
+          }
+          
+          // Load proofs for own profile - always load from Supabase first
+          if (supabaseUser.id) {
+            try {
+              console.log("Loading proofs for own profile from Supabase, user ID:", supabaseUser.id);
+              // Use getMyProofs() which is more reliable for authenticated users
+              const userProofs = await getMyProofs();
+              console.log("Loaded proofs from Supabase:", userProofs);
+              
+              if (userProofs && userProofs.length > 0) {
+                console.log(`Found ${userProofs.length} proofs in Supabase`);
+                setProofs(userProofs);
+              } else {
+                console.log("No proofs found in Supabase, setting empty array");
+                setProofs([]);
+                // Don't fall back to mock proofs for own profile - we want real data from Supabase
+              }
+            } catch (proofError) {
+              console.error("Error loading proofs from Supabase:", proofError);
+              // Try fallback to getUserProofs
+              try {
+                const fallbackProofs = await getUserProofs(supabaseUser.id);
+                console.log("Fallback: Loaded proofs via getUserProofs:", fallbackProofs);
+                if (fallbackProofs && fallbackProofs.length > 0) {
+                  setProofs(fallbackProofs);
+                } else {
+                  setProofs([]);
+                }
+              } catch (fallbackError) {
+                console.error("Fallback also failed:", fallbackError);
+                setProofs([]);
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error loading profile:", error);
+          // If error is "not authenticated", it's fine - user might not have profile yet
+          if (error instanceof Error && !error.message.includes("not authenticated")) {
+            setSupabaseProfile(null);
+          }
+        } finally {
+          setLoading(false);
+        }
+      } else if (profileId && id) {
+        // Viewing another user's profile - try to load from Supabase first
+        try {
+          setLoading(true);
+          const profile = await getProfileById(id);
+          if (profile) {
+            setSupabaseProfile(profile);
+          }
+          
+          // Load proofs for this user
+          try {
+            const userProofs = await getUserProofs(id);
+            if (userProofs && userProofs.length > 0) {
+              setProofs(userProofs);
+            } else {
+              // Fall back to mock proofs if available
+              const foundProfile = mockUsers.find(p => p.id === id);
+              if (foundProfile?.proofs && foundProfile.proofs.length > 0) {
+                setProofs(foundProfile.proofs);
+              }
+            }
+          } catch (proofError) {
+            console.error("Error loading proofs:", proofError);
+            // Fall back to mock proofs if available
+            const foundProfile = mockUsers.find(p => p.id === id);
+            if (foundProfile?.proofs && foundProfile.proofs.length > 0) {
+              setProofs(foundProfile.proofs);
+            }
+          }
+        } catch (error) {
+          console.error("Error loading user profile:", error);
+          // Fall back to mock data - load mock proofs if available
+          const foundProfile = mockUsers.find(p => p.id === id);
+          if (foundProfile?.proofs && foundProfile.proofs.length > 0) {
+            setProofs(foundProfile.proofs);
+          }
+        } finally {
+          setLoading(false);
+        }
+      } else if (!id && !supabaseUser && !user) {
+        // No user, no ID - wait for auth to load
+        setLoading(true);
+      } else {
+        // Viewing another user's profile or no auth needed - try to load mock proofs
+        if (id) {
+  const foundProfile = mockUsers.find(p => p.id === id);
+          if (foundProfile?.proofs && foundProfile.proofs.length > 0) {
+            setProofs(foundProfile.proofs);
+          } else {
+            // Try to load from Supabase even if no mock profile found
+            try {
+              const userProofs = await getUserProofs(id);
+              if (userProofs.length > 0) {
+                setProofs(userProofs);
+              }
+            } catch (error) {
+              console.error("Error loading proofs:", error);
+            }
+          }
+        }
+        setLoading(false);
+      }
+    };
+    loadProfileAndProofs();
+    // Note: getMyProfile and getProfileById are stable and don't need to be in deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, supabaseUser, user, refreshKey, isOwnProfile, currentUserId]);
+  
+  // Refresh profile when navigating from profile setup
+  useEffect(() => {
+    if (location.state?.refresh) {
+      console.log("Refreshing profile due to navigation state");
+      // Force reload profile from Supabase
+      const reloadProfile = async () => {
+        if (isOwnProfile && supabaseUser) {
+          try {
+            const freshProfile = await getMyProfile();
+            if (freshProfile) {
+              console.log("Reloaded fresh profile from Supabase:", {
+                full_name: freshProfile.full_name,
+                skills: freshProfile.skills,
+                skills_to_learn: freshProfile.skills_to_learn,
+                desired_skills: freshProfile.desired_skills,
+              });
+              setSupabaseProfile(freshProfile);
+              
+              // Also reload proofs from Supabase
+              try {
+                console.log("Reloading proofs after profile refresh");
+                const userProofs = await getMyProofs();
+                console.log("Reloaded proofs:", userProofs);
+                if (userProofs && userProofs.length > 0) {
+                  setProofs(userProofs);
+                } else {
+                  // Try fallback
+                  const fallbackProofs = await getUserProofs(supabaseUser.id);
+                  if (fallbackProofs && fallbackProofs.length > 0) {
+                    setProofs(fallbackProofs);
+                  } else {
+                    setProofs([]);
+                  }
+                }
+              } catch (proofError) {
+                console.error("Error reloading proofs:", proofError);
+                // Try fallback
+                try {
+                  const fallbackProofs = await getUserProofs(supabaseUser.id);
+                  if (fallbackProofs) {
+                    setProofs(fallbackProofs);
+                  }
+                } catch (fallbackError) {
+                  console.error("Fallback also failed:", fallbackError);
+                }
+              }
+              
+              setRefreshKey(prev => prev + 1);
+            }
+          } catch (error) {
+            console.error("Error reloading profile:", error);
+          }
+        }
+      };
+      reloadProfile();
+      // Clear the state to prevent infinite refreshes
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, location.pathname, navigate, isOwnProfile, supabaseUser]);
 
+  // Listen for focus events to refresh profile when returning to the page
+  useEffect(() => {
+    const handleFocus = () => {
+      // Reload profile when window regains focus (user returns to tab)
+      if (supabaseUser || user) {
+        if (isOwnProfile && supabaseUser) {
+          // Reload own profile and proofs from Supabase
+          const reloadData = async () => {
+            try {
+              const freshProfile = await getMyProfile();
+              if (freshProfile) {
+                setSupabaseProfile(freshProfile);
+                console.log("Profile refreshed on focus:", {
+                  skills: freshProfile.skills,
+                  skills_to_learn: freshProfile.skills_to_learn,
+                });
+              }
+              
+              // Also reload proofs
+              const freshProofs = await getMyProofs();
+              if (freshProofs) {
+                console.log("Proofs refreshed on focus:", freshProofs.length, "proofs");
+                setProofs(freshProofs);
+              }
+            } catch (error) {
+              console.error("Error reloading profile/proofs on focus:", error);
+            }
+          };
+          reloadData();
+        } else if (profileId && id) {
+          // Reload other user's profile
+          getProfileById(id).then((profile) => {
+            if (profile) {
+              setSupabaseProfile(profile);
+            }
+          }).catch(console.error);
+        }
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [id, supabaseUser, user, isOwnProfile, profileId]);
+  
   // Try to get profile from profile store first (for logged-in user's own profile)
   const storedProfile = profileId ? getProfile(profileId) : null;
   
@@ -29,7 +283,45 @@ const Profile = () => {
   // Determine which profile to use
   let profile;
   
-  if (storedProfile && isOwnProfile) {
+  // Priority: Supabase profile > stored profile > mock profile > defaults
+  if (supabaseProfile) {
+    // Use Supabase profile data (for both own and other users' profiles)
+    // Ensure skills_to_learn is always an array, handle null/undefined cases
+    const skillsToLearn = supabaseProfile.skills_to_learn;
+    const skillsToLearnArray = Array.isArray(skillsToLearn) 
+      ? skillsToLearn 
+      : (skillsToLearn ? [skillsToLearn] : []);
+    
+    // Debug log to see what we're getting
+    console.log("Building profile from Supabase data:", {
+      id: supabaseProfile.id,
+      skills: supabaseProfile.skills,
+      skills_to_learn_raw: skillsToLearn,
+      skills_to_learn_processed: skillsToLearnArray,
+    });
+    
+    profile = {
+      id: supabaseProfile.id,
+      name: supabaseProfile.full_name || supabaseProfile.username || supabaseUser?.user_metadata?.full_name || user?.name || "User",
+      email: supabaseUser?.email || user?.email || "",
+      avatar: supabaseProfile.avatar_url || supabaseUser?.user_metadata?.avatar_url || user?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${supabaseProfile.full_name || "User"}`,
+      bio: supabaseProfile.bio || "Passionate learner and teacher. Love sharing knowledge with the community!",
+      skillsKnown: Array.isArray(supabaseProfile.skills) ? supabaseProfile.skills : (supabaseProfile.skills ? [supabaseProfile.skills] : []),
+      skillsLearning: skillsToLearnArray,
+      occupation: supabaseProfile.bio || "",
+      rating: 4.8,
+      totalSessions: 0,
+      connections: 0,
+      github: undefined,
+      linkedin: undefined,
+      availability: undefined,
+    };
+    
+    console.log("Final profile object for display:", {
+      skillsKnown: profile.skillsKnown,
+      skillsLearning: profile.skillsLearning,
+    });
+  } else if (storedProfile && isOwnProfile) {
     // Use stored profile data for logged-in user (their isolated data)
     profile = {
       id: storedProfile.id,
@@ -50,30 +342,30 @@ const Profile = () => {
   } else if (foundProfile) {
     // Use mock data for other users
     profile = {
-      id: foundProfile.id,
-      name: foundProfile.name,
-      email: user?.email || `${foundProfile.name.toLowerCase().replace(/\s+/g, '')}@example.com`,
-      avatar: foundProfile.avatar,
-      bio: foundProfile.bio,
-      skillsKnown: foundProfile.skillsKnown,
-      skillsLearning: foundProfile.skillsToLearn,
-      rating: foundProfile.trustScore,
-      totalSessions: foundProfile.totalSessions,
+    id: foundProfile.id,
+    name: foundProfile.name,
+    email: user?.email || `${foundProfile.name.toLowerCase().replace(/\s+/g, '')}@example.com`,
+    avatar: foundProfile.avatar,
+    bio: foundProfile.bio,
+    skillsKnown: foundProfile.skillsKnown,
+    skillsLearning: foundProfile.skillsToLearn,
+    rating: foundProfile.trustScore,
+    totalSessions: foundProfile.totalSessions,
       connections: Math.floor(foundProfile.totalSessions * 0.7),
-      github: foundProfile.github,
-      linkedin: foundProfile.linkedin,
+    github: foundProfile.github,
+    linkedin: foundProfile.linkedin,
     };
   } else {
     // Fallback to current user or defaults
     profile = {
       id: profileId || "1",
-      name: user?.name || "John Doe",
-      email: user?.email || "john@example.com",
-      avatar: user?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name || "User"}`,
-      bio: "Passionate learner and teacher. Love sharing knowledge with the community!",
+    name: user?.name || "John Doe",
+    email: user?.email || "john@example.com",
+    avatar: user?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name || "User"}`,
+    bio: "Passionate learner and teacher. Love sharing knowledge with the community!",
       skillsKnown: storedProfile?.skills || [],
       skillsLearning: storedProfile?.skillsToLearn || [],
-      rating: 4.8,
+    rating: 4.8,
       totalSessions: 0,
       connections: 0,
       github: storedProfile?.github || undefined,
@@ -82,88 +374,91 @@ const Profile = () => {
     };
   }
 
-  // Helper function to format time
-  const formatTime = (time: string) => {
-    const [hours, minutes] = time.split(':');
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const hour12 = hour % 12 || 12;
-    return `${hour12}:${minutes} ${ampm}`;
-  };
 
-  // Helper function to display availability
-  const renderAvailability = (availability?: WeeklyAvailability) => {
-    if (!availability) {
-      return (
-        <p className="text-muted-foreground text-sm">
-          {isOwnProfile ? "No availability set. Set your availability to let others know when you're free!" : "No availability information available."}
-        </p>
-      );
-    }
-
-    const DAYS_MAP = [
-      { key: 'monday', label: 'Mon' },
-      { key: 'tuesday', label: 'Tue' },
-      { key: 'wednesday', label: 'Wed' },
-      { key: 'thursday', label: 'Thu' },
-      { key: 'friday', label: 'Fri' },
-      { key: 'saturday', label: 'Sat' },
-      { key: 'sunday', label: 'Sun' },
-    ] as const;
-
-    const availableDays = DAYS_MAP.filter((day) => {
-      const dayAvailability = availability[day.key as keyof WeeklyAvailability] as any;
-      return dayAvailability?.enabled && dayAvailability?.slots?.length > 0;
-    });
-
-    if (availableDays.length === 0) {
-      return (
-        <p className="text-muted-foreground text-sm">
-          {isOwnProfile ? "No availability set. Set your availability to let others know when you're free!" : "No availability information available."}
-        </p>
-      );
-    }
-
+  // Show loading state while checking authentication or loading profile
+  if (loading) {
     return (
-      <div className="space-y-3">
-        <div className="text-sm text-muted-foreground mb-2">
-          Timezone: <span className="font-medium text-foreground">{availability.timezone}</span>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {availableDays.map((day) => {
-            const dayAvailability = availability[day.key as keyof WeeklyAvailability] as any;
-            return (
-              <div key={day.key} className="p-3 bg-muted/50 rounded-lg">
-                <div className="font-medium text-sm mb-2">{day.label}</div>
-                <div className="space-y-1">
-                  {dayAvailability.slots.map((slot: any, idx: number) => (
-                    <div key={idx} className="text-sm text-muted-foreground">
-                      {formatTime(slot.start)} - {formatTime(slot.end)}
-                    </div>
-                  ))}
-                </div>
+      <Layout>
+        <div className="container mx-auto px-4 py-8 max-w-4xl">
+          <Card>
+            <CardContent className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Loading profile...</p>
               </div>
-            );
-          })}
+            </CardContent>
+          </Card>
         </div>
-      </div>
+      </Layout>
     );
-  };
+  }
+
+  // Show empty state with call-to-action if no profile exists for own profile
+  if (isOwnProfile && !supabaseProfile && !storedProfile && !loading && (supabaseUser || user)) {
+    const currentUser = supabaseUser || user;
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 max-w-4xl">
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12 text-center space-y-4">
+              <Avatar className="h-20 w-20 sm:h-24 sm:w-24">
+                <AvatarImage 
+                  src={
+                    (supabaseUser?.user_metadata?.avatar_url) || 
+                    (user?.avatar) || 
+                    `https://api.dicebear.com/7.x/avataaars/svg?seed=${supabaseUser?.email || user?.email || "User"}`
+                  } 
+                />
+                <AvatarFallback className="text-xl sm:text-2xl">
+                  {(supabaseUser?.email || user?.email || "U")[0]?.toUpperCase() || "U"}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-semibold mb-2">Complete Your Profile</h2>
+                <p className="text-muted-foreground text-sm sm:text-base mb-4 max-w-md mx-auto">
+                  Set up your profile to start connecting with others and sharing your skills.
+                </p>
+                <Button onClick={() => navigate("/profile/setup")} className="mt-4">
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Complete Profile
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 max-w-4xl">
         <Card>
-          <CardHeader>
-            <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
-              <Avatar className="h-24 w-24">
+          <CardHeader className="pb-4 sm:pb-6">
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 items-start sm:items-center">
+              <Avatar className="h-20 w-20 sm:h-24 sm:w-24 mx-auto sm:mx-0">
                 <AvatarImage src={profile.avatar} alt={profile.name} />
-                <AvatarFallback className="text-2xl">{profile.name[0]}</AvatarFallback>
+                <AvatarFallback className="text-xl sm:text-2xl">{profile.name[0]}</AvatarFallback>
               </Avatar>
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <CardTitle className="text-3xl">{profile.name}</CardTitle>
+              <div className="flex-1 w-full text-center sm:text-left">
+                <div className="flex flex-col sm:flex-row items-center sm:items-start justify-center sm:justify-start gap-2 sm:gap-3 mb-2">
                   <div className="flex items-center gap-2">
+                    <CardTitle className="text-2xl sm:text-3xl">{profile.name}</CardTitle>
+                    {isOwnProfile && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => navigate("/profile/setup")}
+                        className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-primary"
+                        aria-label="Edit Profile"
+                        title="Edit Profile"
+                      >
+                        <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  {(profile.github || profile.linkedin) && (
+                    <div className="flex items-center gap-2 ml-0 sm:ml-auto">
                     {profile.github && (
                       <a
                         href={profile.github}
@@ -172,7 +467,7 @@ const Profile = () => {
                         className="text-muted-foreground hover:text-primary transition-colors"
                         aria-label="GitHub Profile"
                       >
-                        <Github className="h-5 w-5" />
+                          <Github className="h-4 w-4 sm:h-5 sm:w-5" />
                       </a>
                     )}
                     {profile.linkedin && (
@@ -183,18 +478,21 @@ const Profile = () => {
                         className="text-muted-foreground hover:text-primary transition-colors"
                         aria-label="LinkedIn Profile"
                       >
-                        <Linkedin className="h-5 w-5" />
+                          <Linkedin className="h-4 w-4 sm:h-5 sm:w-5" />
                       </a>
                     )}
                   </div>
+                  )}
                 </div>
-                <p className="text-muted-foreground mb-4">{profile.bio}</p>
-                {profile.occupation && (
-                  <p className="text-sm text-muted-foreground mb-2">{profile.occupation}</p>
+                {profile.bio && (
+                  <p className="text-sm sm:text-base text-muted-foreground mb-3 sm:mb-4">{profile.bio}</p>
                 )}
-                <div className="flex flex-wrap gap-2 items-center">
+                {profile.occupation && (
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-2">{profile.occupation}</p>
+                )}
+                <div className="flex flex-wrap gap-2 items-center justify-center sm:justify-start text-xs sm:text-sm">
                   <div className="flex items-center gap-1">
-                    <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                    <Star className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-yellow-500 fill-yellow-500" />
                     <span className="font-semibold">{profile.rating}</span>
                   </div>
                   <span className="text-muted-foreground">•</span>
@@ -205,62 +503,359 @@ const Profile = () => {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-4 sm:space-y-6 pt-4 sm:pt-6">
             <div>
-              <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                <Award className="h-5 w-5" />
+              <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3 flex items-center gap-2">
+                <Award className="h-4 w-4 sm:h-5 sm:w-5" />
                 Skills {isOwnProfile ? "I Can Teach" : "They Can Teach"}
               </h3>
               {profile.skillsKnown.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {profile.skillsKnown.map((skill) => (
-                    <Badge key={skill} variant="secondary" className="text-sm">
-                      {skill}
-                    </Badge>
-                  ))}
-                </div>
+              <div className="flex flex-wrap gap-2">
+                {profile.skillsKnown.map((skill) => (
+                    <Badge key={skill} variant="secondary" className="text-xs sm:text-sm px-2 py-1">
+                    {skill}
+                  </Badge>
+                ))}
+              </div>
               ) : (
-                <p className="text-muted-foreground text-sm">
-                  {isOwnProfile ? "No skills added yet. Update your profile to add skills!" : "No skills listed."}
+                <p className="text-muted-foreground text-xs sm:text-sm">
+                  {isOwnProfile ? "No skills added yet. Click the edit button to add skills!" : "No skills listed."}
                 </p>
               )}
             </div>
-            {profile.skillsLearning.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold mb-3">Skills {isOwnProfile ? "I'm Learning" : "They're Learning"}</h3>
-                <div className="flex flex-wrap gap-2">
-                  {profile.skillsLearning.map((skill) => (
-                    <Badge key={skill} variant="outline" className="text-sm">
-                      {skill}
-                    </Badge>
-                  ))}
+
+            {/* Compulsory Proof Upload Section - Only for own profile with skills */}
+            {isOwnProfile && profile.skillsKnown && profile.skillsKnown.length > 0 && (
+              <div className="space-y-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                      <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-red-500" />
+                      Upload Proof of Skills <span className="text-red-500">*</span>
+                    </h3>
+                  </div>
+                  <Alert className="mb-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="text-xs sm:text-sm">
+                      Proof of skills is required. Please upload at least one proof document for each skill you claim to teach.
+                    </AlertDescription>
+                  </Alert>
+                  <div className="space-y-4">
+                    {profile.skillsKnown.map((skill) => {
+                      const skillProofs = proofs.filter(p => p.skill && p.skill.toLowerCase() === skill.toLowerCase());
+                      const hasProof = skillProofs.length > 0;
+                      const isUploading = uploadingProofs[skill] || false;
+                      const selectedFile = selectedFiles[skill];
+                      const fileInputRef = (el: HTMLInputElement | null) => {
+                        fileInputRefs.current[skill] = el;
+                      };
+
+                      return (
+                        <div key={skill} className="border rounded-lg p-4 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm sm:text-base">{skill}</span>
+                              {hasProof ? (
+                                <Badge variant="default" className="bg-green-500 hover:bg-green-600">
+                                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                                  Proof Uploaded
+                                </Badge>
+                              ) : (
+                                <Badge variant="destructive">
+                                  <AlertCircle className="h-3 w-3 mr-1" />
+                                  Proof Required
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {!hasProof && (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  ref={fileInputRef}
+                                  type="file"
+                                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.mp4,.mov,.avi"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      setSelectedFiles(prev => ({ ...prev, [skill]: file }));
+                                    }
+                                  }}
+                                />
+                                {!selectedFile ? (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => fileInputRefs.current[skill]?.click()}
+                                    disabled={isUploading}
+                                    className="flex items-center gap-2"
+                                  >
+                                    <Upload className="h-4 w-4" />
+                                    Upload Proof
+                                  </Button>
+                                ) : (
+                                  <div className="flex items-center gap-2 w-full">
+                                    <div className="flex-1 flex items-center gap-2 p-2 border rounded-md bg-muted/50">
+                                      <FileText className="h-4 w-4 text-primary" />
+                                      <span className="text-sm truncate flex-1">{selectedFile.name}</span>
+                                      <span className="text-xs text-muted-foreground">
+                                        {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                                      </span>
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => setSelectedFiles(prev => {
+                                        const updated = { ...prev };
+                                        delete updated[skill];
+                                        return updated;
+                                      })}
+                                      disabled={isUploading}
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                )}
+                                {selectedFile && (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={async () => {
+                                      if (!selectedFile || !supabaseUser) {
+                                        toast.error("Please select a file and ensure you're logged in");
+                                        return;
+                                      }
+
+                                      try {
+                                        setUploadingProofs(prev => ({ ...prev, [skill]: true }));
+                                        
+                                        // Determine file type
+                                        const fileName = selectedFile.name.toLowerCase();
+                                        let fileType = "pdf";
+                                        if (fileName.endsWith(".pdf")) fileType = "pdf";
+                                        else if (fileName.endsWith(".doc") || fileName.endsWith(".docx")) fileType = "pdf";
+                                        else if (fileName.match(/\.(jpg|jpeg|png|gif)$/)) fileType = "image";
+                                        else if (fileName.match(/\.(mp4|mov|avi|webm)$/)) fileType = "video";
+                                        
+                                        // Upload file to storage
+                                        console.log(`Uploading proof for skill: ${skill}`);
+                                        const fileUrl = await uploadProof(selectedFile);
+                                        console.log(`File uploaded successfully. URL: ${fileUrl}`);
+                                        
+                                        // Save proof to database
+                                        console.log(`Saving proof to database for skill: ${skill}`);
+                                        const savedProof = await saveProof(skill, fileUrl, fileType);
+                                        console.log(`Proof saved to database:`, savedProof);
+                                        
+                                        // Verify proof was saved by reloading from Supabase
+                                        if (supabaseUser.id) {
+                                          console.log(`Reloading proofs from Supabase for user: ${supabaseUser.id}`);
+                                          const updatedProofs = await getUserProofs(supabaseUser.id);
+                                          console.log(`Loaded ${updatedProofs.length} proofs from Supabase:`, updatedProofs);
+                                          
+                                          // Update state with fresh proofs from Supabase
+                                          setProofs(updatedProofs);
+                                          
+                                          // Verify the proof we just uploaded is in the list
+                                          const newlyUploadedProof = updatedProofs.find(p => 
+                                            p.skill.toLowerCase() === skill.toLowerCase() && 
+                                            p.url === fileUrl
+                                          );
+                                          
+                                          if (!newlyUploadedProof) {
+                                            console.warn("Warning: Proof was saved but not found in reloaded proofs. This might be a caching issue.");
+                                          } else {
+                                            console.log("Successfully verified proof is in database:", newlyUploadedProof);
+                                          }
+                                        }
+                                        
+                                        // Clear selected file
+                                        setSelectedFiles(prev => {
+                                          const updated = { ...prev };
+                                          delete updated[skill];
+                                          return updated;
+                                        });
+                                        
+                                        toast.success(`Proof uploaded successfully for ${skill}! It will now appear on your profile.`);
+                                        
+                                        // Force refresh to ensure UI updates
+                                        setRefreshKey(prev => prev + 1);
+                                        
+                                        // Also reload profile data to ensure everything is in sync
+                                        try {
+                                          const freshProfile = await getMyProfile();
+                                          if (freshProfile) {
+                                            setSupabaseProfile(freshProfile);
+                                          }
+                                        } catch (profileError) {
+                                          console.warn("Could not reload profile after proof upload:", profileError);
+                                        }
+                                      } catch (error) {
+                                        console.error("Error uploading proof:", error);
+                                        toast.error(error instanceof Error ? error.message : "Failed to upload proof");
+                                      } finally {
+                                        setUploadingProofs(prev => {
+                                          const updated = { ...prev };
+                                          delete updated[skill];
+                                          return updated;
+                                        });
+                                      }
+                                    }}
+                                    disabled={isUploading}
+                                    className="flex items-center gap-2"
+                                  >
+                                    {isUploading ? (
+                                      <>
+                                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                                        Uploading...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Upload className="h-4 w-4" />
+                                        Save Proof
+                                      </>
+                                    )}
+                                  </Button>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                Accepted formats: PDF, DOC, DOCX, Images (JPG, PNG, GIF), Videos (MP4, MOV, AVI)
+                              </p>
+                            </div>
+                          )}
+                          
+                          {hasProof && (
+                            <div className="text-sm text-green-600 flex items-center gap-2">
+                              <CheckCircle2 className="h-4 w-4" />
+                              <span>Proof uploaded ({skillProofs.length} {skillProofs.length === 1 ? "file" : "files"})</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             )}
-
-            {/* Availability Section */}
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <Clock className="h-5 w-5" />
-                  Availability
+              <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3">Skills {isOwnProfile ? "I Want to Learn" : "They Want to Learn"}</h3>
+              {profile.skillsLearning && profile.skillsLearning.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {profile.skillsLearning.map((skill) => (
+                    <Badge key={skill} variant="outline" className="text-xs sm:text-sm px-2 py-1">
+                    {skill}
+                  </Badge>
+                ))}
+              </div>
+              ) : (
+                <p className="text-muted-foreground text-xs sm:text-sm">
+                  {isOwnProfile ? "No skills to learn added yet. Click the edit button to add skills you want to learn!" : "No skills to learn listed."}
+                </p>
+              )}
+            </div>
+            
+            {/* Skill Proofs Section - Always show if user has skills */}
+            {profile.skillsKnown && profile.skillsKnown.length > 0 && (
+              <div>
+                <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3 flex items-center gap-2">
+                  <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
+                  Proofs of Skills {isOwnProfile ? "I Can Teach" : "They Can Teach"}
                 </h3>
-                {isOwnProfile && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate("/availability")}
-                  >
-                    <Settings className="h-4 w-4 mr-2" />
-                    Edit Availability
-                  </Button>
+                {proofs.length > 0 ? (
+                  <div className="space-y-3">
+                    {profile.skillsKnown.map((skill) => {
+                      const skillProofs = proofs.filter(p => p.skill && p.skill.toLowerCase() === skill.toLowerCase());
+                      if (skillProofs.length === 0) return null;
+                    
+                      const isExpanded = expandedSkill === skill;
+                      
+                      return (
+                        <div key={skill} className="border rounded-lg overflow-hidden">
+                          <button
+                            onClick={() => setExpandedSkill(isExpanded ? null : skill)}
+                            className="w-full p-3 sm:p-4 flex items-center justify-between hover:bg-muted/50 transition-colors text-left"
+                          >
+                            <div className="flex items-center gap-2 sm:gap-3">
+                              <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                              <span className="font-medium text-sm sm:text-base">{skill}</span>
+                              <Badge variant="secondary" className="text-xs">
+                                {skillProofs.length} {skillProofs.length === 1 ? "proof" : "proofs"}
+                              </Badge>
+                            </div>
+                            {isExpanded ? (
+                              <ChevronUp className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+                            )}
+                          </button>
+                          {isExpanded && (
+                            <div className="border-t bg-muted/30 p-3 sm:p-4 space-y-2">
+                              {skillProofs.map((proof, idx) => (
+                                <button
+                                  key={idx}
+                                  onClick={() => setExpandedProof({ url: proof.url, skill: proof.skill })}
+                                  className="w-full p-3 border rounded-lg hover:bg-background hover:border-primary/50 transition-colors text-left group"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <FileText className="h-4 w-4 text-primary group-hover:scale-110 transition-transform" />
+                                      <span className="text-sm font-medium">{proof.skill} Proof</span>
+                                    </div>
+                                    <span className="text-xs text-muted-foreground uppercase">{proof.type}</span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground mt-1">Click to view document</p>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-xs sm:text-sm">
+                    {isOwnProfile ? "No proofs uploaded yet. Upload proof documents to verify your skills!" : "No proofs available for this user."}
+                  </p>
                 )}
               </div>
-              {renderAvailability((profile as any).availability)}
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>
+      
+      {/* Proof Viewer Dialog */}
+      <Dialog open={!!expandedProof} onOpenChange={(open) => !open && setExpandedProof(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>
+              {expandedProof?.skill} - Proof Document
+            </DialogTitle>
+          </DialogHeader>
+          <div className="mt-4">
+            {expandedProof?.url && expandedProof.url !== "#" ? (
+              <div className="w-full" style={{ height: "calc(90vh - 150px)", minHeight: "500px" }}>
+                <iframe
+                  src={expandedProof.url}
+                  className="w-full h-full border rounded-lg"
+                  title={`${expandedProof.skill} Proof`}
+                />
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-lg text-muted-foreground mb-2">Proof document not available</p>
+                <p className="text-sm text-muted-foreground">
+                  The proof document URL is not available or invalid.
+                </p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 };

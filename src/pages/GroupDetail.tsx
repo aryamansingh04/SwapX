@@ -33,9 +33,21 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import Layout from "@/components/Layout";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useAuthUser } from "@/hooks/useAuthUser";
 import { toast } from "sonner";
+import { User, UserX } from "lucide-react";
 
 interface GroupMessage {
   id: string;
@@ -75,11 +87,28 @@ interface Group {
 const GroupDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const { user: authStoreUser } = useAuthStore();
+  const { user: supabaseUser } = useAuthUser();
+  // Use Supabase user first, fallback to auth store user
+  const user = supabaseUser || authStoreUser;
   const [group, setGroup] = useState<Group | null>(null);
   const [messageText, setMessageText] = useState("");
   const [selectedMessage, setSelectedMessage] = useState<GroupMessage | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showAnonymousDialog, setShowAnonymousDialog] = useState(false);
+  const [pendingMessage, setPendingMessage] = useState<string>("");
+  const [pendingFile, setPendingFile] = useState<{
+    file: File;
+    fileMessage: string;
+    fileUrl?: string;
+    attachment: {
+      type: "image" | "video" | "file";
+      name: string;
+      size: string;
+      url?: string;
+    };
+  } | null>(null);
+  const [sendAsAnonymous, setSendAsAnonymous] = useState<boolean | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -281,15 +310,92 @@ const GroupDetail = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleSendMessage = () => {
-    if (!messageText.trim() || !group || !user) return;
+  const handleSendMessage = (isAnonymous: boolean) => {
+    if (!group) {
+      toast.error("Group not found");
+      setShowAnonymousDialog(false);
+      setPendingMessage("");
+      setPendingFile(null);
+      return;
+    }
+    
+    // Check if user is authenticated via Supabase or auth store
+    if (!supabaseUser && !authStoreUser) {
+      toast.error("Please log in to send messages");
+      setShowAnonymousDialog(false);
+      setPendingMessage("");
+      setPendingFile(null);
+      return;
+    }
+
+    // Handle file attachment
+    if (pendingFile) {
+      const senderName = isAnonymous 
+        ? "Anonymous" 
+        : (user?.user_metadata?.full_name || user?.email?.split("@")[0] || authStoreUser?.name || "You");
+      const senderAvatar = isAnonymous ? undefined : (user?.user_metadata?.avatar_url || authStoreUser?.avatar);
+      
+      const newMessage: GroupMessage = {
+        id: `msg-${Date.now()}`,
+        senderId: user?.id || authStoreUser?.id || "1",
+        senderName: senderName,
+        senderAvatar: senderAvatar,
+        text: pendingFile.fileMessage,
+        timestamp: new Date(),
+        isOwn: true,
+        attachment: pendingFile.attachment,
+      };
+
+      const updatedGroup: Group = {
+        ...group,
+        messages: [...group.messages, newMessage],
+      };
+
+      const groups = JSON.parse(localStorage.getItem("groups") || "[]");
+      const groupIndex = groups.findIndex((g: any) => g.id === group.id);
+      if (groupIndex !== -1) {
+        groups[groupIndex] = {
+          ...updatedGroup,
+          messages: updatedGroup.messages.map((msg) => ({
+            ...msg,
+            timestamp: msg.timestamp.toISOString(),
+            attachment: msg.attachment ? {
+              ...msg.attachment,
+              url: undefined, // Blob URLs are session-only
+            } : undefined,
+          })),
+          createdAt: updatedGroup.createdAt.toISOString(),
+        };
+        saveGroups(groups);
+        window.dispatchEvent(new Event("groupsUpdated"));
+      }
+      setGroup(updatedGroup);
+      setPendingFile(null);
+      setShowAnonymousDialog(false);
+      setSendAsAnonymous(null); // Reset preference after sending
+      toast.success("File attachment sent");
+      
+      // Scroll to bottom after sending
+      setTimeout(() => {
+        scrollToBottom();
+      }, 100);
+      return;
+    }
+
+    // Handle text message
+    if (!pendingMessage.trim()) return;
+
+    const senderName = isAnonymous 
+      ? "Anonymous" 
+      : (user?.user_metadata?.full_name || user?.email?.split("@")[0] || authStoreUser?.name || "You");
+    const senderAvatar = isAnonymous ? undefined : (user?.user_metadata?.avatar_url || authStoreUser?.avatar);
 
     const newMessage: GroupMessage = {
       id: `msg-${Date.now()}`,
-      senderId: user.id || "1",
-      senderName: user.name || "You",
-      senderAvatar: user.avatar,
-      text: messageText.trim(),
+      senderId: user?.id || authStoreUser?.id || "1",
+      senderName: senderName,
+      senderAvatar: senderAvatar,
+      text: pendingMessage.trim(),
       timestamp: new Date(),
       isOwn: true,
     };
@@ -324,16 +430,48 @@ const GroupDetail = () => {
     saveGroups(groups);
     setGroup(updatedGroup);
     setMessageText("");
+    setPendingMessage("");
     setShowEmojiPicker(false);
+    setShowAnonymousDialog(false);
+    setSendAsAnonymous(null); // Reset preference after sending
     
     // Dispatch event to update groups list
     window.dispatchEvent(new Event("groupsUpdated"));
+    
+    // Scroll to bottom after sending
+    setTimeout(() => {
+      scrollToBottom();
+    }, 100);
+  };
+
+  const handleSendClick = () => {
+    if (!messageText.trim()) {
+      toast.error("Please enter a message");
+      return;
+    }
+    
+    if (!group) {
+      toast.error("Group not found");
+      return;
+    }
+    
+    // Check if user is authenticated via Supabase or auth store
+    if (!supabaseUser && !authStoreUser) {
+      toast.error("Please log in to send messages");
+      return;
+    }
+    
+    // Always show dialog to ask (as per user requirement)
+    setPendingMessage(messageText);
+    setShowAnonymousDialog(true);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSendMessage();
+      if (messageText.trim() && group && (supabaseUser || authStoreUser)) {
+        handleSendClick();
+      }
     }
   };
 
@@ -350,8 +488,8 @@ const GroupDetail = () => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    if (!group || !user) {
-      toast.error("Unable to send file");
+    if (!group || (!supabaseUser && !authStoreUser)) {
+      toast.error("Unable to send file. Please log in first.");
       e.target.value = "";
       return;
     }
@@ -392,56 +530,22 @@ const GroupDetail = () => {
     
     const fileMessage = `${fileType}: ${file.name} (${fileSize})`;
     
-    // Create new message with file info
-    const newMessage: GroupMessage = {
-      id: `msg-${Date.now()}`,
-      senderId: user.id || "1",
-      senderName: user.name || "You",
-      senderAvatar: user.avatar,
-      text: fileMessage,
-      timestamp: new Date(),
-      isOwn: true,
+    // Store file info and show anonymous dialog
+    setPendingFile({
+      file,
+      fileMessage,
+      fileUrl,
       attachment: {
         type: isImage ? "image" : isVideo ? "video" : "file",
         name: file.name,
         size: fileSize,
         url: fileUrl,
       },
-    };
-
-    const updatedGroup: Group = {
-      ...group,
-      messages: [...group.messages, newMessage],
-    };
-
-    const groups = JSON.parse(localStorage.getItem("groups") || "[]");
-    const groupIndex = groups.findIndex((g: any) => g.id === group.id);
-    if (groupIndex !== -1) {
-      // Note: We can't store blob URLs in localStorage, so we'll just store the file info
-      // In a real app, you would upload the file to a server and store the URL
-      groups[groupIndex] = {
-        ...updatedGroup,
-        messages: updatedGroup.messages.map((msg) => ({
-          ...msg,
-          timestamp: msg.timestamp.toISOString(),
-          // Don't store blob URL in localStorage as it won't persist
-          attachment: msg.attachment ? {
-            ...msg.attachment,
-            url: undefined, // Blob URLs are session-only
-          } : undefined,
-        })),
-        createdAt: updatedGroup.createdAt.toISOString(),
-      };
-      saveGroups(groups);
-      window.dispatchEvent(new Event("groupsUpdated"));
-    }
-    setGroup(updatedGroup);
-    setMessageText("");
+    });
+    setShowAnonymousDialog(true);
     
     // Reset file input
     e.target.value = "";
-    
-    toast.success("File attachment sent");
   };
 
   const handleCopyMessage = (text: string) => {
@@ -763,23 +867,79 @@ const GroupDetail = () => {
             <Input
               value={messageText}
               onChange={(e) => setMessageText(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyPress}
               placeholder="Type a message..."
               className="flex-1"
             />
             <Button
-              onClick={handleSendMessage}
+              onClick={handleSendClick}
               disabled={!messageText.trim()}
               size="icon"
               className="flex-shrink-0"
+              type="button"
             >
               <Send className="h-5 w-5" />
             </Button>
           </div>
         </div>
 
-        {/* Message Context Menu */}
-        {selectedMessage && (
+      {/* Anonymous/Name Dialog */}
+      <AlertDialog 
+        open={showAnonymousDialog} 
+        onOpenChange={(open) => {
+          if (!open) {
+            // When dialog closes, clear pending state if not sent
+            setPendingMessage("");
+            setPendingFile(null);
+          }
+          setShowAnonymousDialog(open);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Send Message</AlertDialogTitle>
+            <AlertDialogDescription>
+              How would you like to send this {pendingFile ? "file" : "message"}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3 py-4">
+            <Button
+              variant="outline"
+              className="w-full justify-start hover:bg-primary hover:text-primary-foreground"
+              onClick={() => {
+                handleSendMessage(false);
+              }}
+            >
+              <User className="h-4 w-4 mr-2" />
+              Send with my name ({user?.user_metadata?.full_name || user?.email?.split("@")[0] || authStoreUser?.name || "You"})
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start hover:bg-primary hover:text-primary-foreground"
+              onClick={() => {
+                handleSendMessage(true);
+              }}
+            >
+              <UserX className="h-4 w-4 mr-2" />
+              Send as Anonymous
+            </Button>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setShowAnonymousDialog(false);
+                setPendingMessage("");
+                setPendingFile(null);
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Message Context Menu */}
+      {selectedMessage && (
           <div className="fixed inset-0 z-50" onClick={() => setSelectedMessage(null)}>
             <div
               className="fixed bg-background border rounded-lg shadow-lg p-1 min-w-[200px]"

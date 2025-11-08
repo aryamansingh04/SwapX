@@ -2,9 +2,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { useAuthStore } from "@/stores/useAuthStore";
+import AuthGate from "@/components/AuthGate";
 
 // Pages
 import Landing from "./pages/Landing";
@@ -35,6 +35,7 @@ import News from "./pages/News";
 import NewsDetail from "./pages/NewsDetail";
 import FAQ from "./pages/FAQ";
 import AboutUs from "./pages/AboutUs";
+import Explore from "./pages/Explore";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,24 +46,18 @@ const queryClient = new QueryClient({
   },
 });
 
-// Protected Route Component
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated } = useAuthStore();
-  
-  if (!isAuthenticated) {
-    return <Navigate to="/auth/login" replace />;
-  }
-  
-  return <>{children}</>;
-};
-
 const App = () => (
   <ThemeProvider defaultTheme="dark" storageKey="swapx-theme">
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
+        <BrowserRouter
+          future={{
+            v7_startTransition: true,
+            v7_relativeSplatPath: true,
+          }}
+        >
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<Landing />} />
@@ -72,187 +67,195 @@ const App = () => (
 
             {/* Protected Routes */}
             <Route
+              path="/explore"
+              element={<Explore />}
+            />
+            <Route
               path="/home"
               element={
-                <ProtectedRoute>
+                <AuthGate>
                   <Home />
-                </ProtectedRoute>
+                </AuthGate>
               }
             />
             <Route
               path="/profile/setup"
+              element={<ProfileSetup />}
+            />
+            <Route
+              path="/profile"
               element={
-                <ProtectedRoute>
-                  <ProfileSetup />
-                </ProtectedRoute>
+                <AuthGate>
+                  <Profile />
+                </AuthGate>
               }
             />
             <Route
               path="/profile/:id"
               element={
-                <ProtectedRoute>
+                <AuthGate>
                   <Profile />
-                </ProtectedRoute>
+                </AuthGate>
               }
             />
             <Route
               path="/dashboard"
               element={
-                <ProtectedRoute>
+                <AuthGate>
                   <Dashboard />
-                </ProtectedRoute>
+                </AuthGate>
               }
             />
             <Route
               path="/chat/:connectionId?"
               element={
-                <ProtectedRoute>
+                <AuthGate>
                   <Chat />
-                </ProtectedRoute>
+                </AuthGate>
               }
             />
             <Route
               path="/meeting/:id?"
               element={
-                <ProtectedRoute>
+                <AuthGate>
                   <MeetingScheduler />
-                </ProtectedRoute>
+                </AuthGate>
               }
             />
             <Route
               path="/reels"
               element={
-                <ProtectedRoute>
+                <AuthGate>
                   <Reels />
-                </ProtectedRoute>
+                </AuthGate>
               }
             />
             <Route
               path="/notes"
               element={
-                <ProtectedRoute>
+                <AuthGate>
                   <Notes />
-                </ProtectedRoute>
+                </AuthGate>
               }
             />
             <Route
               path="/notes/:id"
               element={
-                <ProtectedRoute>
+                <AuthGate>
                   <NoteDetail />
-                </ProtectedRoute>
+                </AuthGate>
               }
             />
             <Route
               path="/my-notes"
               element={
-                <ProtectedRoute>
+                <AuthGate>
                   <MyNotes />
-                </ProtectedRoute>
+                </AuthGate>
               }
             />
             <Route
               path="/saved-notes"
               element={
-                <ProtectedRoute>
+                <AuthGate>
                   <SavedNotes />
-                </ProtectedRoute>
+                </AuthGate>
               }
             />
             <Route
               path="/connection-settings"
               element={
-                <ProtectedRoute>
+                <AuthGate>
                   <ConnectionSettings />
-                </ProtectedRoute>
+                </AuthGate>
               }
             />
             <Route
               path="/availability"
               element={
-                <ProtectedRoute>
+                <AuthGate>
                   <AvailabilitySettings />
-                </ProtectedRoute>
+                </AuthGate>
               }
             />
             <Route
               path="/groups"
               element={
-                <ProtectedRoute>
+                <AuthGate>
                   <GroupDiscussion />
-                </ProtectedRoute>
+                </AuthGate>
               }
             />
             <Route
               path="/groups/:id"
               element={
-                <ProtectedRoute>
+                <AuthGate>
                   <GroupDetail />
-                </ProtectedRoute>
+                </AuthGate>
               }
             />
             <Route
               path="/groups/:id/members"
               element={
-                <ProtectedRoute>
+                <AuthGate>
                   <GroupMembers />
-                </ProtectedRoute>
+                </AuthGate>
               }
             />
             <Route
               path="/news"
               element={
-                <ProtectedRoute>
+                <AuthGate>
                   <News />
-                </ProtectedRoute>
+                </AuthGate>
               }
             />
             <Route
               path="/news/:id"
               element={
-                <ProtectedRoute>
+                <AuthGate>
                   <NewsDetail />
-                </ProtectedRoute>
+                </AuthGate>
               }
             />
             <Route
               path="/proofs/upload"
               element={
-                <ProtectedRoute>
+                <AuthGate>
                   <ProofUpload />
-                </ProtectedRoute>
+                </AuthGate>
               }
             />
             <Route
               path="/proof"
               element={
-                <ProtectedRoute>
+                <AuthGate>
                   <ProofViewer />
-                </ProtectedRoute>
+                </AuthGate>
               }
             />
             <Route
               path="/rate/:sessionId"
               element={
-                <ProtectedRoute>
+                <AuthGate>
                   <Rating />
-                </ProtectedRoute>
+                </AuthGate>
               }
             />
             <Route
               path="/faq"
               element={
-                <ProtectedRoute>
+                <AuthGate>
                   <FAQ />
-                </ProtectedRoute>
+                </AuthGate>
               }
             />
             <Route
               path="/about-us"
               element={
-                <ProtectedRoute>
+                <AuthGate>
                   <AboutUs />
-                </ProtectedRoute>
+                </AuthGate>
               }
             />
 

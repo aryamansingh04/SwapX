@@ -1,12 +1,67 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, Users, Award, MessageSquare, Calendar, Upload, Star, Zap, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Auth } from "@supabase/auth-ui-react";
+import { ThemeSupa } from "@supabase/auth-ui-shared";
+import { supabase } from "@/lib/supabase";
+import { getMyProfile } from "@/lib/profile";
 
 const Landing = () => {
   const navigate = useNavigate();
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"signin" | "signup">("signup");
+
+  // Listen for auth state changes and close dialog on successful auth
+  useEffect(() => {
+    let mounted = true;
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Only handle SIGNED_IN event when auth dialog is open (user signing in from landing page)
+      // Don't interfere if user is already navigating elsewhere
+      if (event === "SIGNED_IN" && session?.user && mounted && authOpen) {
+        // Check if we're still on the landing page (not navigating away)
+        if (window.location.pathname === "/") {
+          setAuthOpen(false);
+          
+          // Small delay to ensure session is fully established
+          setTimeout(async () => {
+            if (!mounted || window.location.pathname !== "/") return;
+            
+            try {
+              const profile = await getMyProfile();
+              
+              // Only navigate if we're still on landing page
+              if (mounted && window.location.pathname === "/") {
+                if (!profile) {
+                  navigate("/profile/setup", { replace: true });
+                } else {
+                  navigate("/home", { replace: true });
+                }
+              }
+            } catch (error) {
+              console.error("Error checking profile:", error);
+              // On error, only navigate if still on landing page
+              if (mounted && window.location.pathname === "/") {
+                navigate("/profile/setup", { replace: true });
+              }
+            }
+          }, 200);
+        }
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [navigate, authOpen]);
 
   const features = [
     {
@@ -58,10 +113,13 @@ const Landing = () => {
           </div>
           <div className="flex items-center gap-4">
             <ThemeToggle />
-            <Button variant="ghost" onClick={() => navigate("/auth/login")}>
+            <Button variant="ghost" onClick={() => {
+              setAuthMode("signin");
+              setAuthOpen(true);
+            }}>
               Sign In
             </Button>
-            <Button onClick={() => navigate("/auth/signup")}>
+            <Button onClick={() => navigate("/profile/setup")}>
               Get Started
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
@@ -93,7 +151,7 @@ const Landing = () => {
                 <Button
                   size="lg"
                   className="text-lg px-8 py-6"
-                  onClick={() => navigate("/auth/signup")}
+                  onClick={() => navigate("/profile/setup")}
                 >
                   Get Started Free
                   <ArrowRight className="ml-2 h-5 w-5" />
@@ -102,7 +160,10 @@ const Landing = () => {
                   size="lg"
                   variant="outline"
                   className="text-lg px-8 py-6"
-                  onClick={() => navigate("/auth/login")}
+                  onClick={() => {
+                    setAuthMode("signin");
+                    setAuthOpen(true);
+                  }}
                 >
                   Sign In
                 </Button>
@@ -249,7 +310,7 @@ const Landing = () => {
                 <Button
                   size="lg"
                   className="text-lg px-8 py-6"
-                  onClick={() => navigate("/auth/signup")}
+                  onClick={() => navigate("/profile/setup")}
                 >
                   Get Started Free
                   <ArrowRight className="ml-2 h-5 w-5" />
@@ -258,7 +319,10 @@ const Landing = () => {
                   size="lg"
                   variant="outline"
                   className="text-lg px-8 py-6"
-                  onClick={() => navigate("/auth/login")}
+                  onClick={() => {
+                    setAuthMode("signin");
+                    setAuthOpen(true);
+                  }}
                 >
                   Sign In
                 </Button>
@@ -286,6 +350,44 @@ const Landing = () => {
           </div>
         </div>
       </footer>
+
+      {/* Auth Dialog */}
+      <Dialog open={authOpen} onOpenChange={setAuthOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex justify-center mb-4">
+              <img src="/swapx-logo.svg" alt="SwapX" className="h-10" />
+            </div>
+            <DialogTitle className="text-center">
+              {authMode === "signup" ? "Get Started" : "Welcome Back"}
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              {authMode === "signup"
+                ? "Create your account to start learning and teaching"
+                : "Sign in to continue your learning journey"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Auth
+              supabaseClient={supabase}
+              appearance={{
+                theme: ThemeSupa,
+                style: {
+                  button: {
+                    borderRadius: "0.5rem",
+                  },
+                  input: {
+                    borderRadius: "0.5rem",
+                  },
+                },
+              }}
+              view={authMode}
+              providers={["google", "github"]}
+              redirectTo={`${window.location.origin}/home`}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

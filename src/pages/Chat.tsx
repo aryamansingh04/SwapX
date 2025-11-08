@@ -27,7 +27,13 @@ import {
   Clock,
   UserPlus,
   UserCheck,
-  UserX
+  UserX,
+  Video,
+  Play,
+  FileText,
+  BookOpen,
+  Calendar,
+  Clock as ClockIcon
 } from "lucide-react";
 import { format, isToday, isYesterday, formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -55,6 +61,10 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import Layout from "@/components/Layout";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useAuthUser } from "@/hooks/useAuthUser";
+import { getMessages, Message, sendMessage } from "@/lib/chat";
+import { myConnections } from "@/lib/connections";
+import { getProfileById } from "@/lib/profile";
 import { toast } from "sonner";
 
 interface ChatMessage {
@@ -93,6 +103,10 @@ interface CallHistory {
   date: string;
   time: string;
   duration: string;
+  recordedLecture?: string; // URL to recorded lecture
+  notes?: string; // Relevant notes from the call
+  subject?: string; // Subject of the call
+  topics?: string[]; // Topics discussed in the call
 }
 
 const mockChats: Chat[] = [
@@ -218,7 +232,7 @@ const mockChats: Chat[] = [
     unreadCount: 0,
     isPinned: false,
     isMuted: true,
-    isArchived: true,
+    isArchived: false,
     isTyping: false,
     connectionStatus: "connected",
     messages: [
@@ -249,46 +263,302 @@ const mockChats: Chat[] = [
       },
     ]
   },
+  {
+    id: "5",
+    name: "Emily Rodriguez",
+    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Emily",
+    lastMessage: "The design system looks great!",
+    lastMessageTime: "3 hours ago",
+    lastSeen: "30 minutes ago",
+    unreadCount: 1,
+    isPinned: false,
+    isMuted: false,
+    isArchived: false,
+    isTyping: false,
+    connectionStatus: "connected",
+    messages: [
+      { 
+        id: "1", 
+        sender: "Emily Rodriguez", 
+        text: "Hi! Can you review my UI design?", 
+        time: "4 hours ago", 
+        timestamp: new Date(Date.now() - 14400000),
+        isOwn: false 
+      },
+      { 
+        id: "2", 
+        sender: "You", 
+        text: "Sure! Send me the link", 
+        time: "4 hours ago", 
+        timestamp: new Date(Date.now() - 14300000),
+        isOwn: true,
+        status: "read"
+      },
+      { 
+        id: "3", 
+        sender: "Emily Rodriguez", 
+        text: "The design system looks great!", 
+        time: "3 hours ago", 
+        timestamp: new Date(Date.now() - 10800000),
+        isOwn: false 
+      },
+    ]
+  },
+  {
+    id: "6",
+    name: "David Kim",
+    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=David",
+    lastMessage: "When can we start the backend session?",
+    lastMessageTime: "1 hour ago",
+    lastSeen: "5 minutes ago",
+    unreadCount: 0,
+    isPinned: true,
+    isMuted: false,
+    isArchived: false,
+    isTyping: false,
+    connectionStatus: "connected",
+    messages: [
+      { 
+        id: "1", 
+        sender: "David Kim", 
+        text: "I need help with Node.js backend", 
+        time: "2 hours ago", 
+        timestamp: new Date(Date.now() - 7200000),
+        isOwn: false 
+      },
+      { 
+        id: "2", 
+        sender: "You", 
+        text: "I can help! What specifically?", 
+        time: "2 hours ago", 
+        timestamp: new Date(Date.now() - 7100000),
+        isOwn: true,
+        status: "read"
+      },
+      { 
+        id: "3", 
+        sender: "David Kim", 
+        text: "When can we start the backend session?", 
+        time: "1 hour ago", 
+        timestamp: new Date(Date.now() - 3600000),
+        isOwn: false 
+      },
+    ]
+  },
+  {
+    id: "7",
+    name: "Sophia Williams",
+    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sophia",
+    lastMessage: "The algorithm explanation was perfect!",
+    lastMessageTime: "5 hours ago",
+    lastSeen: "1 hour ago",
+    unreadCount: 0,
+    isPinned: false,
+    isMuted: false,
+    isArchived: false,
+    isTyping: false,
+    connectionStatus: "connected",
+    messages: [
+      { 
+        id: "1", 
+        sender: "Sophia Williams", 
+        text: "Can you explain dynamic programming?", 
+        time: "6 hours ago", 
+        timestamp: new Date(Date.now() - 21600000),
+        isOwn: false 
+      },
+      { 
+        id: "2", 
+        sender: "You", 
+        text: "Sure! Let me explain with examples", 
+        time: "6 hours ago", 
+        timestamp: new Date(Date.now() - 21500000),
+        isOwn: true,
+        status: "read"
+      },
+      { 
+        id: "3", 
+        sender: "Sophia Williams", 
+        text: "The algorithm explanation was perfect!", 
+        time: "5 hours ago", 
+        timestamp: new Date(Date.now() - 18000000),
+        isOwn: false 
+      },
+    ]
+  },
+  {
+    id: "8",
+    name: "Michael Brown",
+    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Michael",
+    lastMessage: "Thanks for the database help!",
+    lastMessageTime: "Yesterday",
+    lastSeen: "Yesterday at 6:00 PM",
+    unreadCount: 0,
+    isPinned: false,
+    isMuted: false,
+    isArchived: false,
+    isTyping: false,
+    connectionStatus: "connected",
+    messages: [
+      { 
+        id: "1", 
+        sender: "Michael Brown", 
+        text: "I'm struggling with PostgreSQL queries", 
+        time: "Yesterday", 
+        timestamp: new Date(Date.now() - 86400000),
+        isOwn: false 
+      },
+      { 
+        id: "2", 
+        sender: "You", 
+        text: "I can help! What's the issue?", 
+        time: "Yesterday", 
+        timestamp: new Date(Date.now() - 86000000),
+        isOwn: true,
+        status: "read"
+      },
+      { 
+        id: "3", 
+        sender: "Michael Brown", 
+        text: "Thanks for the database help!", 
+        time: "Yesterday", 
+        timestamp: new Date(Date.now() - 85600000),
+        isOwn: false 
+      },
+    ]
+  },
+  {
+    id: "9",
+    name: "Olivia Martinez",
+    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Olivia",
+    lastMessage: "The API design is looking good!",
+    lastMessageTime: "12 hours ago",
+    lastSeen: "8 hours ago",
+    unreadCount: 2,
+    isPinned: false,
+    isMuted: false,
+    isArchived: false,
+    isTyping: false,
+    connectionStatus: "pending-sent",
+    messages: [
+      { 
+        id: "1", 
+        sender: "Olivia Martinez", 
+        text: "Can you help me with REST API design?", 
+        time: "12 hours ago", 
+        timestamp: new Date(Date.now() - 43200000),
+        isOwn: false 
+      },
+      { 
+        id: "2", 
+        sender: "You", 
+        text: "Absolutely! Here's a good structure...", 
+        time: "12 hours ago", 
+        timestamp: new Date(Date.now() - 43100000),
+        isOwn: true,
+        status: "sent"
+      },
+    ]
+  },
+  {
+    id: "10",
+    name: "James Wilson",
+    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=James",
+    lastMessage: "The Docker setup works perfectly!",
+    lastMessageTime: "6 hours ago",
+    lastSeen: "3 hours ago",
+    unreadCount: 0,
+    isPinned: false,
+    isMuted: false,
+    isArchived: false,
+    isTyping: false,
+    connectionStatus: "connected",
+    messages: [
+      { 
+        id: "1", 
+        sender: "James Wilson", 
+        text: "Need help with Docker containers", 
+        time: "7 hours ago", 
+        timestamp: new Date(Date.now() - 25200000),
+        isOwn: false 
+      },
+      { 
+        id: "2", 
+        sender: "You", 
+        text: "Sure! Let me guide you through it", 
+        time: "7 hours ago", 
+        timestamp: new Date(Date.now() - 25100000),
+        isOwn: true,
+        status: "read"
+      },
+      { 
+        id: "3", 
+        sender: "James Wilson", 
+        text: "The Docker setup works perfectly!", 
+        time: "6 hours ago", 
+        timestamp: new Date(Date.now() - 21600000),
+        isOwn: false 
+      },
+    ]
+  },
 ];
 
 const Chat = () => {
   const { connectionId } = useParams<{ connectionId?: string }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const { user: supabaseUser } = useAuthUser();
   const [message, setMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedChatId, setSelectedChatId] = useState<string | null>(connectionId || null);
-  const [chats, setChats] = useState<Chat[]>([]);
+  const [chats, setChats] = useState<Chat[]>(mockChats); // Initialize with mock chats
   const [showCallHistory, setShowCallHistory] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [selectedCall, setSelectedCall] = useState<CallHistory | null>(null);
   const [newChatOpen, setNewChatOpen] = useState(false);
   const [newChatName, setNewChatName] = useState("");
   const [newChatAvatar, setNewChatAvatar] = useState("");
 
   // Load chats from localStorage and connection requests
   useEffect(() => {
-    const loadChats = () => {
-      // Load existing chats from localStorage
+    const loadChats = async () => {
+      // Always start with mock chats - these are the dummy chats we want to show
+      const chatMap = new Map<string, Chat>();
+      
+      // First, add all mock chats (these are always shown)
+      mockChats.forEach(chat => {
+        chatMap.set(chat.id, chat);
+      });
+      
+      // Then, load saved chats from localStorage and merge them (but don't override mock chats)
       const savedChats = localStorage.getItem("chats");
-      let existingChats: Chat[] = [];
       if (savedChats) {
         try {
           const parsed = JSON.parse(savedChats);
-          existingChats = parsed.map((chat: any) => ({
+          const loadedChats = parsed.map((chat: any) => ({
             ...chat,
-            messages: chat.messages.map((msg: any) => ({
+            messages: (chat.messages || []).map((msg: any) => ({
               ...msg,
-              timestamp: new Date(msg.timestamp),
+              timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
             })),
           }));
-        } catch {
-          existingChats = [...mockChats];
+          
+          // Only add chats from localStorage that don't conflict with mock chats
+          loadedChats.forEach((chat: Chat) => {
+            if (!chatMap.has(chat.id)) {
+              chatMap.set(chat.id, chat);
+            }
+          });
+        } catch (error) {
+          console.error("Error loading chats from localStorage:", error);
+          // If error, just use mock chats
         }
-      } else {
-        existingChats = [...mockChats];
       }
 
-      // Load connection requests
+      // Convert chatMap to array for processing
+      let allChats: Chat[] = Array.from(chatMap.values());
+
+      // Load connection requests (optional - for future connection features)
       const connectionRequestsSent = JSON.parse(
         localStorage.getItem("connectionRequestsSent") || "[]"
       );
@@ -299,104 +569,177 @@ const Chat = () => {
         localStorage.getItem("connections") || "[]"
       );
 
-      // Import mockUsers to get user data
-      import("@/data/mockUsers").then(({ mockUsers }) => {
-        // Create chat entries for connection requests
-        const requestChats: Chat[] = [];
+      // Update connection status for existing chats based on connections
+      allChats = allChats.map((chat) => {
+        const isConnected = connections.includes(chat.id);
+        const sentRequest = connectionRequestsSent.find((r: any) => r.userId === chat.id);
+        const receivedRequest = connectionRequestsReceived.find(
+          (r: any) => (r.userId || r.id) === chat.id
+        );
 
-        // Add chats for sent connection requests
-        connectionRequestsSent.forEach((request: any) => {
-          const userData = mockUsers.find((u) => u.id === request.userId);
-          if (userData && !existingChats.find((c) => c.id === request.userId)) {
-            const isConnected = connections.includes(request.userId);
-            requestChats.push({
-              id: request.userId,
-              name: userData.name,
-              avatar: userData.avatar,
-              lastMessage: isConnected ? "Start a conversation" : "Connection request sent",
-              lastMessageTime: format(new Date(request.sentAt), "h:mm a"),
-              unreadCount: 0,
-              isPinned: false,
-              isMuted: false,
-              isArchived: false,
-              isTyping: false,
-              connectionStatus: isConnected
-                ? "connected"
-                : request.status === "rejected"
-                ? "not-connected"
-                : "pending-sent",
-              messages: [],
-            });
-          }
-        });
+        let connectionStatus = chat.connectionStatus || "not-connected";
+        if (isConnected) {
+          connectionStatus = "connected";
+        } else if (sentRequest) {
+          connectionStatus =
+            sentRequest.status === "rejected" ? "not-connected" : "pending-sent";
+        } else if (receivedRequest) {
+          connectionStatus = "pending-received";
+        }
 
-        // Add chats for received connection requests
-        connectionRequestsReceived.forEach((request: any) => {
-          const userData = mockUsers.find((u) => u.id === request.userId || u.id === request.id);
-          const userId = request.userId || request.id;
-          if (userData && !existingChats.find((c) => c.id === userId)) {
-            const isConnected = connections.includes(userId);
-            requestChats.push({
-              id: userId,
-              name: userData.name || request.name,
-              avatar: userData.avatar || request.avatar,
-              lastMessage: isConnected ? "Start a conversation" : "Connection request received",
-              lastMessageTime: format(new Date(request.sentAt), "h:mm a"),
-              unreadCount: 0,
-              isPinned: false,
-              isMuted: false,
-              isArchived: false,
-              isTyping: false,
-              connectionStatus: isConnected ? "connected" : "pending-received",
-              messages: [],
-            });
-          }
-        });
-
-        // Update existing chats' connection status
-        const updatedChats = existingChats.map((chat) => {
-          const isConnected = connections.includes(chat.id);
-          const sentRequest = connectionRequestsSent.find((r: any) => r.userId === chat.id);
-          const receivedRequest = connectionRequestsReceived.find(
-            (r: any) => (r.userId || r.id) === chat.id
-          );
-
-          let connectionStatus = chat.connectionStatus || "not-connected";
-          if (isConnected) {
-            connectionStatus = "connected";
-          } else if (sentRequest) {
-            connectionStatus =
-              sentRequest.status === "rejected" ? "not-connected" : "pending-sent";
-          } else if (receivedRequest) {
-            connectionStatus = "pending-received";
-          }
-
-          return {
-            ...chat,
-            connectionStatus,
-          };
-        });
-
-        // Merge and update chats
-        const allChats: Chat[] = [...updatedChats];
-        requestChats.forEach((requestChat) => {
-          if (!allChats.find((c) => c.id === requestChat.id)) {
-            allChats.push({
-              ...requestChat,
-              connectionStatus: requestChat.connectionStatus || "not-connected",
-            });
-          }
-        });
-
-        // Ensure all chats have connectionStatus
-        const allChatsWithStatus = allChats.map((chat) => ({
+        return {
           ...chat,
-          connectionStatus: chat.connectionStatus || "not-connected",
-        }));
-
-        setChats(allChatsWithStatus);
-        localStorage.setItem("chats", JSON.stringify(allChatsWithStatus));
+          connectionStatus,
+        };
       });
+
+      // Try to load from Supabase if user is authenticated (but don't override mock chats)
+      if (supabaseUser) {
+        try {
+          const supabaseConnections = await myConnections();
+          for (const connection of supabaseConnections) {
+            const partnerId = connection.user_id === supabaseUser.id 
+              ? connection.partner_id 
+              : connection.user_id;
+
+            // Skip if we already have this chat (mock chats take precedence)
+            if (chatMap.has(partnerId)) {
+              // Update connection status for existing mock chat
+              const existingChat = allChats.find(c => c.id === partnerId);
+              if (existingChat) {
+                if (connection.status === "accepted") {
+                  existingChat.connectionStatus = "connected";
+                  // Try to load messages from Supabase
+                  try {
+                    const supabaseMessages = await getMessages(connection.id);
+                    const chatMessages: ChatMessage[] = supabaseMessages.map((msg) => ({
+                      id: msg.id.toString(),
+                      sender: msg.sender === supabaseUser.id ? "You" : existingChat.name,
+                      text: msg.content,
+                      time: msg.created_at ? format(new Date(msg.created_at), "h:mm a") : "",
+                      timestamp: msg.created_at ? new Date(msg.created_at) : new Date(),
+                      isOwn: msg.sender === supabaseUser.id,
+                      status: msg.sender === supabaseUser.id ? "sent" : undefined,
+                    }));
+                    // Merge Supabase messages with existing messages (avoid duplicates)
+                    if (chatMessages.length > 0) {
+                      const existingMessageIds = new Set(existingChat.messages.map(m => m.id));
+                      const newMessages = chatMessages.filter(m => !existingMessageIds.has(m.id));
+                      existingChat.messages = [...existingChat.messages, ...newMessages].sort((a, b) => 
+                        a.timestamp.getTime() - b.timestamp.getTime()
+                      );
+                      // Update last message
+                      if (existingChat.messages.length > 0) {
+                        const lastMsg = existingChat.messages[existingChat.messages.length - 1];
+                        existingChat.lastMessage = lastMsg.text;
+                        existingChat.lastMessageTime = lastMsg.time;
+                      }
+                    }
+                    // Store connectionId for sending messages
+                    existingChat.connectionId = connection.id;
+                  } catch (error) {
+                    console.error(`Error loading messages for connection ${connection.id}:`, error);
+                  }
+                } else if (connection.status === "pending") {
+                  existingChat.connectionStatus = connection.user_id === supabaseUser.id 
+                    ? "pending-sent" 
+                    : "pending-received";
+                }
+              }
+              continue;
+            }
+
+            // If not a mock chat, try to get profile and create chat entry
+            try {
+              const partnerProfile = await getProfileById(partnerId);
+              if (!partnerProfile) continue;
+
+              let allMessages: Message[] = [];
+              try {
+                allMessages = await getMessages(connection.id);
+              } catch (error) {
+                // No messages yet, that's okay
+              }
+
+              const chatMessages: ChatMessage[] = allMessages.map((msg) => ({
+                id: msg.id.toString(),
+                sender: msg.sender === supabaseUser.id ? "You" : partnerProfile.full_name || partnerProfile.username || "User",
+                text: msg.content,
+                time: msg.created_at ? format(new Date(msg.created_at), "h:mm a") : "",
+                timestamp: msg.created_at ? new Date(msg.created_at) : new Date(),
+                isOwn: msg.sender === supabaseUser.id,
+                status: msg.sender === supabaseUser.id ? "sent" : undefined,
+              }));
+
+              let connectionStatus: "connected" | "pending-sent" | "pending-received" | "not-connected" = "not-connected";
+              if (connection.status === "accepted") {
+                connectionStatus = "connected";
+              } else if (connection.status === "pending") {
+                connectionStatus = connection.user_id === supabaseUser.id ? "pending-sent" : "pending-received";
+              }
+
+              const lastMessage = chatMessages.length > 0 ? chatMessages[chatMessages.length - 1] : null;
+              let lastMessageTime = "Now";
+              if (lastMessage) {
+                const msgDate = lastMessage.timestamp;
+                if (isToday(msgDate)) {
+                  lastMessageTime = format(msgDate, "h:mm a");
+                } else if (isYesterday(msgDate)) {
+                  lastMessageTime = "Yesterday";
+                } else {
+                  lastMessageTime = format(msgDate, "MMM d");
+                }
+              }
+
+              const supabaseChat: Chat = {
+                id: partnerId,
+                connectionId: connection.id,
+                name: partnerProfile.full_name || partnerProfile.username || "User",
+                avatar: partnerProfile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${partnerProfile.username || "User"}`,
+                lastMessage: lastMessage ? lastMessage.text : "Start a conversation",
+                lastMessageTime: lastMessageTime,
+                lastSeen: undefined,
+                unreadCount: 0,
+                isPinned: false,
+                isMuted: false,
+                isArchived: false,
+                isTyping: false,
+                connectionStatus,
+                messages: chatMessages,
+              };
+
+              allChats.push(supabaseChat);
+            } catch (error) {
+              console.error(`Error loading profile for ${partnerId}:`, error);
+            }
+          }
+        } catch (error) {
+          console.error("Error loading Supabase connections:", error);
+        }
+      }
+
+      // Ensure all chats have connectionStatus
+      const allChatsWithStatus = allChats.map((chat) => ({
+        ...chat,
+        connectionStatus: chat.connectionStatus || "not-connected",
+      }));
+
+      // Sort chats: pinned first, then by last message time (most recent first)
+      allChatsWithStatus.sort((a, b) => {
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        // For same pin status, sort by last message time
+        const timeA = a.messages.length > 0 
+          ? a.messages[a.messages.length - 1].timestamp.getTime()
+          : 0;
+        const timeB = b.messages.length > 0
+          ? b.messages[b.messages.length - 1].timestamp.getTime()
+          : 0;
+        return timeB - timeA;
+      });
+
+      setChats(allChatsWithStatus);
+      saveChatsToStorage(allChatsWithStatus);
     };
 
     loadChats();
@@ -424,7 +767,11 @@ const Chat = () => {
       type: "outgoing",
       date: "2024-01-15",
       time: "14:30",
-      duration: "15:32"
+      duration: "15:32",
+      recordedLecture: "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4",
+      notes: "Discussed React hooks and state management. Sarah had questions about useEffect dependencies and custom hooks. Recommended using React Query for data fetching.",
+      subject: "React Development",
+      topics: ["React Hooks", "State Management", "useEffect", "Custom Hooks", "React Query"]
     },
     {
       id: "2",
@@ -434,7 +781,11 @@ const Chat = () => {
       type: "incoming",
       date: "2024-01-14",
       time: "10:15",
-      duration: "08:45"
+      duration: "08:45",
+      recordedLecture: "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_2mb.mp4",
+      notes: "Python debugging session. Helped Alex with list comprehensions and error handling. Covered try-except blocks and logging best practices.",
+      subject: "Python Programming",
+      topics: ["List Comprehensions", "Error Handling", "Try-Except Blocks", "Logging", "Debugging"]
     },
     {
       id: "3",
@@ -454,7 +805,11 @@ const Chat = () => {
       type: "incoming",
       date: "2024-01-12",
       time: "09:00",
-      duration: "22:10"
+      duration: "22:10",
+      recordedLecture: "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4",
+      notes: "Long session on React performance optimization. Covered memoization with useMemo and useCallback, code splitting, and lazy loading components. Discussed React DevTools profiling.",
+      subject: "React Performance",
+      topics: ["Performance Optimization", "Memoization", "useMemo", "useCallback", "Code Splitting", "Lazy Loading", "React DevTools"]
     },
     {
       id: "5",
@@ -464,7 +819,39 @@ const Chat = () => {
       type: "outgoing",
       date: "2024-01-11",
       time: "11:30",
-      duration: "05:20"
+      duration: "05:20",
+      recordedLecture: "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_2mb.mp4",
+      notes: "Quick Python review session. Covered dictionary operations and lambda functions.",
+      subject: "Python Basics",
+      topics: ["Dictionaries", "Lambda Functions", "Python Syntax"]
+    },
+    {
+      id: "6",
+      chatId: "6",
+      name: "David Kim",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=David",
+      type: "outgoing",
+      date: "2024-01-10",
+      time: "15:45",
+      duration: "12:30",
+      recordedLecture: "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4",
+      notes: "Node.js backend architecture discussion. Covered Express.js routing, middleware, and database connections. Discussed RESTful API design principles.",
+      subject: "Node.js Backend",
+      topics: ["Express.js", "Routing", "Middleware", "Database Connections", "RESTful API", "API Design"]
+    },
+    {
+      id: "7",
+      chatId: "7",
+      name: "Sophia Williams",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sophia",
+      type: "incoming",
+      date: "2024-01-09",
+      time: "13:20",
+      duration: "18:15",
+      recordedLecture: "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_2mb.mp4",
+      notes: "Algorithm deep dive: Dynamic programming. Covered Fibonacci sequence, knapsack problem, and longest common subsequence. Provided coding examples and practice problems.",
+      subject: "Algorithms & Data Structures",
+      topics: ["Dynamic Programming", "Fibonacci", "Knapsack Problem", "Longest Common Subsequence", "Algorithm Optimization"]
     },
   ]);
 
@@ -581,114 +968,220 @@ const Chat = () => {
     return groups;
   };
 
-  const handleSend = () => {
-    if (!message.trim() || !selectedChatId) return;
-    
-    // Check if connection is accepted
-    const currentChat = chats.find(chat => chat.id === selectedChatId);
-    if (currentChat?.connectionStatus !== "connected") {
-      toast.error("You need to be connected to send messages");
+  // Helper function to properly serialize chats for localStorage (handles Date objects)
+  const saveChatsToStorage = (chatsToSave: Chat[]) => {
+    try {
+      const serialized = JSON.stringify(chatsToSave.map(chat => ({
+        ...chat,
+        messages: (chat.messages || []).map(msg => ({
+          ...msg,
+          timestamp: msg.timestamp instanceof Date 
+            ? msg.timestamp.toISOString() 
+            : (typeof msg.timestamp === 'string' ? msg.timestamp : new Date().toISOString()),
+        })),
+      })));
+      localStorage.setItem("chats", serialized);
+      window.dispatchEvent(new Event("chatsUpdated"));
+      return true;
+    } catch (error) {
+      console.error("Error saving chats to localStorage:", error);
+      return false;
+    }
+  };
+
+  const handleSend = async () => {
+    if (!message.trim()) {
+      toast.error("Please enter a message");
+      return;
+    }
+
+    if (!selectedChatId) {
+      toast.error("Please select a chat");
       return;
     }
     
+    // Check if connection is accepted
+    const currentChat = chats.find(chat => chat.id === selectedChatId);
+    if (!currentChat) {
+      toast.error("Chat not found");
+      return;
+    }
+
+    if (currentChat.connectionStatus !== "connected") {
+      toast.error("You need to be connected to send messages");
+      return;
+    }
+
+    const messageText = message.trim();
     const now = new Date();
+    
+    // Clear input immediately for better UX
+    setMessage("");
+    
+    // If we have a connectionId, send via Supabase
+    if (currentChat.connectionId && supabaseUser) {
+      try {
+        // Create optimistic message immediately for instant UI feedback
+        const optimisticMessage: ChatMessage = {
+          id: `temp-${Date.now()}`,
+          sender: "You",
+          text: messageText,
+          time: format(now, "h:mm a"),
+          timestamp: now,
+          isOwn: true,
+          status: "sending",
+        };
+
+        // Update UI immediately with optimistic message
+        setChats(prevChats => {
+          const optimisticChats = prevChats.map(chat => {
+            if (chat.id === selectedChatId) {
+              return {
+                ...chat,
+                messages: [...chat.messages, optimisticMessage],
+                lastMessage: messageText,
+                lastMessageTime: optimisticMessage.time,
+              };
+            }
+            return chat;
+          });
+          saveChatsToStorage(optimisticChats);
+          return optimisticChats;
+        });
+        
+        // Send message to Supabase
+        const sentMessage = await sendMessage(currentChat.connectionId, messageText);
+        
+        // Get all messages from Supabase to ensure we have the complete, up-to-date list
+        const allSupabaseMessages = await getMessages(currentChat.connectionId);
+        
+        // Convert Supabase messages to ChatMessage format
+        const allChatMessages: ChatMessage[] = allSupabaseMessages.map((msg) => ({
+          id: msg.id.toString(),
+          sender: msg.sender === supabaseUser.id ? "You" : currentChat.name,
+          text: msg.content,
+          time: msg.created_at ? format(new Date(msg.created_at), "h:mm a") : format(now, "h:mm a"),
+          timestamp: msg.created_at ? new Date(msg.created_at) : now,
+          isOwn: msg.sender === supabaseUser.id,
+          status: msg.sender === supabaseUser.id ? "sent" : undefined,
+        }));
+
+        // Update chats with all messages from Supabase (replacing optimistic message)
+        setChats(prevChats => {
+          const finalChats = prevChats.map(chat => {
+            if (chat.id === selectedChatId) {
+              return {
+                ...chat,
+                messages: allChatMessages, // Replace with complete message list from Supabase
+                lastMessage: allChatMessages.length > 0 
+                  ? allChatMessages[allChatMessages.length - 1].text 
+                  : messageText,
+                lastMessageTime: allChatMessages.length > 0 
+                  ? allChatMessages[allChatMessages.length - 1].time 
+                  : format(now, "h:mm a"),
+              };
+            }
+            return chat;
+          });
+          saveChatsToStorage(finalChats);
+          return finalChats;
+        });
+        
+        toast.success("Message sent successfully");
+      } catch (error) {
+        console.error("Error sending message:", error);
+        toast.error(error instanceof Error ? error.message : "Failed to send message");
+        
+        // Restore message input on error
+        setMessage(messageText);
+        
+        // Remove optimistic message on error and restore previous state
+        setChats(prevChats => {
+          const errorChats = prevChats.map(chat => {
+            if (chat.id === selectedChatId) {
+              return {
+                ...chat,
+                messages: chat.messages.filter(msg => !msg.id.startsWith("temp-")),
+              };
+            }
+            return chat;
+          });
+          saveChatsToStorage(errorChats);
+          return errorChats;
+        });
+      }
+      return;
+    }
+    
+    // Fallback to localStorage for non-Supabase chats
     const newMessage: ChatMessage = {
-        id: Date.now().toString(),
-        sender: "You",
-        text: message,
+      id: Date.now().toString(),
+      sender: "You",
+      text: messageText,
       time: format(now, "h:mm a"),
       timestamp: now,
-        isOwn: true,
-      status: "sending",
+      isOwn: true,
+      status: "sent",
     };
 
-    const updatedChats = chats.map(chat => {
-      if (chat.id === selectedChatId) {
-        return {
-          ...chat,
-          messages: [...chat.messages, newMessage],
-          lastMessage: newMessage.text,
-          lastMessageTime: newMessage.time,
-        };
-      }
-      return chat;
-    });
-    
-    setChats(updatedChats);
-    localStorage.setItem("chats", JSON.stringify(updatedChats));
-    
-    // Create notification for new message (if chat is not currently open)
-    // Note: In a real app, this would be handled by the backend/other user
-    // For now, we'll create a notification when messages are sent to simulate receiving messages
-    const notifications = JSON.parse(localStorage.getItem("notifications") || "[]");
-    // Only create notification if this is simulating a received message (not from current user)
-    // Since we're sending, we won't create a notification here - it would be created when receiving
-    
-    // Dispatch event to sync with other components
-    window.dispatchEvent(new Event("chatsUpdated"));
-    
-    setMessage("");
-
-    // Simulate message delivery and read status
-    setTimeout(() => {
-      const currentChats = JSON.parse(localStorage.getItem("chats") || JSON.stringify(updatedChats));
-      const updated = currentChats.map((chat: Chat) => {
+    setChats(prevChats => {
+      const updatedChats = prevChats.map(chat => {
         if (chat.id === selectedChatId) {
           return {
             ...chat,
-            messages: chat.messages.map((msg: ChatMessage) =>
-              msg.id === newMessage.id
-                ? { ...msg, status: "sent" as const }
-                : msg
-            ),
+            messages: [...chat.messages, newMessage],
+            lastMessage: newMessage.text,
+            lastMessageTime: newMessage.time,
           };
         }
         return chat;
       });
-      setChats(updated);
-      localStorage.setItem("chats", JSON.stringify(updated));
-      window.dispatchEvent(new Event("chatsUpdated"));
+      saveChatsToStorage(updatedChats);
+      return updatedChats;
+    });
+    
+    toast.success("Message sent successfully");
+
+    // Simulate message delivery status updates
+    setTimeout(() => {
+      setChats(prevChats => {
+        const updated = prevChats.map(chat => {
+          if (chat.id === selectedChatId) {
+            return {
+              ...chat,
+              messages: chat.messages.map(msg =>
+                msg.id === newMessage.id
+                  ? { ...msg, status: "delivered" as const }
+                  : msg
+              ),
+            };
+          }
+          return chat;
+        });
+        saveChatsToStorage(updated);
+        return updated;
+      });
     }, 500);
 
     setTimeout(() => {
-      const currentChats = JSON.parse(localStorage.getItem("chats") || "[]");
-      const updated = currentChats.map((chat: Chat) => {
-        if (chat.id === selectedChatId) {
-          return {
-            ...chat,
-            messages: chat.messages.map((msg: ChatMessage) =>
-              msg.id === newMessage.id
-                ? { ...msg, status: "delivered" as const }
-                : msg
-            ),
-          };
-        }
-        return chat;
+      setChats(prevChats => {
+        const updated = prevChats.map(chat => {
+          if (chat.id === selectedChatId) {
+            return {
+              ...chat,
+              messages: chat.messages.map(msg =>
+                msg.id === newMessage.id
+                  ? { ...msg, status: "read" as const }
+                  : msg
+              ),
+            };
+          }
+          return chat;
+        });
+        saveChatsToStorage(updated);
+        return updated;
       });
-      setChats(updated);
-      localStorage.setItem("chats", JSON.stringify(updated));
-      window.dispatchEvent(new Event("chatsUpdated"));
     }, 1000);
-
-    setTimeout(() => {
-      const currentChats = JSON.parse(localStorage.getItem("chats") || "[]");
-      const updated = currentChats.map((chat: Chat) => {
-        if (chat.id === selectedChatId) {
-          return {
-            ...chat,
-            messages: chat.messages.map((msg: ChatMessage) =>
-              msg.id === newMessage.id
-                ? { ...msg, status: "read" as const }
-                : msg
-            ),
-          };
-        }
-        return chat;
-      });
-      setChats(updated);
-      localStorage.setItem("chats", JSON.stringify(updated));
-      window.dispatchEvent(new Event("chatsUpdated"));
-    }, 2000);
   };
 
   // Message context menu handlers
@@ -905,8 +1398,7 @@ const Chat = () => {
         : chat
     );
     setChats(updatedChats);
-    localStorage.setItem("chats", JSON.stringify(updatedChats));
-    window.dispatchEvent(new Event("chatsUpdated"));
+    saveChatsToStorage(updatedChats);
     
     // Mark message notifications for this chat as read
     const notifications = JSON.parse(localStorage.getItem("notifications") || "[]");
@@ -919,6 +1411,8 @@ const Chat = () => {
     window.dispatchEvent(new Event("notificationsUpdated"));
     
     setSelectedChatId(chatId);
+    setSelectedCall(null); // Clear selected call when selecting a chat
+    setShowCallHistory(false); // Switch back to chat view
     navigate(`/chat/${chatId}`);
   };
 
@@ -1135,8 +1629,8 @@ const Chat = () => {
   };
 
   const handleCallHistoryItemClick = (call: CallHistory) => {
-    setShowCallHistory(false);
-    navigate(`/chat/${call.chatId}`);
+    setSelectedCall(call);
+    setSelectedChatId(null); // Clear selected chat when viewing call details
   };
 
   const handleNewChat = () => {
@@ -1394,6 +1888,8 @@ const Chat = () => {
             onClick={() => {
               setShowCallHistory(false);
               setShowArchived(false);
+              setSelectedCall(null);
+              setSelectedChatId(null);
               navigate("/chat");
             }}
           >
@@ -1408,7 +1904,12 @@ const Chat = () => {
             variant={showCallHistory ? "default" : "ghost"}
             size="icon" 
             className="h-10 w-10"
-            onClick={() => handleCall()}
+            onClick={() => {
+              setShowCallHistory(!showCallHistory);
+              setShowArchived(false);
+              setSelectedCall(null);
+              setSelectedChatId(null);
+            }}
           >
             <Phone className="h-5 w-5" />
           </Button>
@@ -1428,7 +1929,9 @@ const Chat = () => {
                   <button
                     key={call.id}
                     onClick={() => handleCallHistoryItemClick(call)}
-                    className="w-full p-3 hover:bg-muted/50 transition-colors text-left"
+                    className={`w-full p-3 hover:bg-muted/50 transition-colors text-left ${
+                      selectedCall?.id === call.id ? 'bg-muted' : ''
+                    }`}
                   >
                     <div className="flex items-center gap-3">
                       <Avatar className="h-12 w-12 border-2 border-transparent">
@@ -1572,9 +2075,229 @@ const Chat = () => {
         </ScrollArea>
       </div>
 
-      {/* Right Section - Chat Area */}
+      {/* Right Section - Chat Area or Call Details */}
       <div className="flex-1 flex flex-col">
-        {selectedChat ? (
+        {selectedCall ? (
+          <>
+            {/* Call Details Header */}
+            <div className="p-4 border-b bg-card">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-12 w-12">
+                    <AvatarImage src={selectedCall.avatar} alt={selectedCall.name} />
+                    <AvatarFallback>{selectedCall.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <h2 className="font-semibold">{selectedCall.name}</h2>
+                    <p className="text-xs text-muted-foreground">
+                      {format(new Date(`${selectedCall.date} ${selectedCall.time}`), "PPP 'at' p")}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const chat = chats.find(c => c.id === selectedCall.chatId);
+                      if (chat) {
+                        setSelectedChatId(selectedCall.chatId);
+                        setSelectedCall(null);
+                        setShowCallHistory(false);
+                        navigate(`/chat/${selectedCall.chatId}`);
+                      }
+                    }}
+                  >
+                    <MessageCircle className="h-4 w-4 mr-2" />
+                    Open Chat
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setSelectedCall(null);
+                    }}
+                  >
+                    <MoreVertical className="h-5 w-5" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Call Details Content */}
+            <ScrollArea className="flex-1 p-6">
+              <div className="max-w-3xl mx-auto space-y-6">
+                {/* Call Icon and Type */}
+                <div className="flex flex-col items-center justify-center py-8">
+                  <div className={`p-6 rounded-full mb-4 ${
+                    selectedCall.type === "incoming" 
+                      ? "bg-green-100 dark:bg-green-900/30" 
+                      : selectedCall.type === "outgoing"
+                      ? "bg-blue-100 dark:bg-blue-900/30"
+                      : "bg-red-100 dark:bg-red-900/30"
+                  }`}>
+                    {selectedCall.type === "incoming" ? (
+                      <PhoneIncoming className="h-12 w-12 text-green-600 dark:text-green-400" />
+                    ) : selectedCall.type === "outgoing" ? (
+                      <PhoneOutgoing className="h-12 w-12 text-blue-600 dark:text-blue-400" />
+                    ) : (
+                      <PhoneMissed className="h-12 w-12 text-red-600 dark:text-red-400" />
+                    )}
+                  </div>
+                  <Badge variant={getCallBadgeVariant(selectedCall.type)} className="text-sm px-3 py-1">
+                    {selectedCall.type.charAt(0).toUpperCase() + selectedCall.type.slice(1)} Call
+                  </Badge>
+                </div>
+
+                {/* Call Information */}
+                <div className="bg-card border rounded-lg p-6 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center gap-3">
+                      <Calendar className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Date & Time</p>
+                        <p className="font-medium">
+                          {format(new Date(`${selectedCall.date} ${selectedCall.time}`), "PPP 'at' p")}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <ClockIcon className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Duration</p>
+                        <p className="font-medium">{selectedCall.duration}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 pt-4 border-t">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={selectedCall.avatar} alt={selectedCall.name} />
+                      <AvatarFallback>{selectedCall.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <p className="text-sm text-muted-foreground">Contact</p>
+                      <Button
+                        variant="link"
+                        className="p-0 h-auto font-medium"
+                        onClick={() => {
+                          const chat = chats.find(c => c.id === selectedCall.chatId);
+                          if (chat) {
+                            setSelectedChatId(selectedCall.chatId);
+                            setSelectedCall(null);
+                            setShowCallHistory(false);
+                            navigate(`/chat/${selectedCall.chatId}`);
+                          }
+                        }}
+                      >
+                        {selectedCall.name}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Subject */}
+                {selectedCall.subject && (
+                  <div className="bg-card border rounded-lg p-6">
+                    <div className="flex items-center gap-3 mb-3">
+                      <BookOpen className="h-5 w-5 text-primary" />
+                      <h3 className="font-semibold text-lg">Subject</h3>
+                    </div>
+                    <p className="text-muted-foreground">{selectedCall.subject}</p>
+                  </div>
+                )}
+
+                {/* Topics Discussed */}
+                {selectedCall.topics && selectedCall.topics.length > 0 && (
+                  <div className="bg-card border rounded-lg p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <FileText className="h-5 w-5 text-primary" />
+                      <h3 className="font-semibold text-lg">Topics Discussed</h3>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedCall.topics.map((topic, idx) => (
+                        <Badge key={idx} variant="secondary" className="text-sm">
+                          {topic}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Recorded Lecture */}
+                {selectedCall.recordedLecture && (
+                  <div className="bg-card border rounded-lg p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <Video className="h-5 w-5 text-primary" />
+                      <h3 className="font-semibold text-lg">Recorded Lecture</h3>
+                    </div>
+                    <div className="relative aspect-video bg-black rounded-lg overflow-hidden">
+                      <video
+                        controls
+                        className="w-full h-full"
+                        src={selectedCall.recordedLecture}
+                      >
+                        Your browser does not support the video tag.
+                      </video>
+                    </div>
+                    <Button
+                      variant="outline"
+                      className="mt-4 w-full"
+                      onClick={() => window.open(selectedCall.recordedLecture, '_blank')}
+                    >
+                      <Play className="h-4 w-4 mr-2" />
+                      Open in New Tab
+                    </Button>
+                  </div>
+                )}
+
+                {/* Notes */}
+                {selectedCall.notes && (
+                  <div className="bg-card border rounded-lg p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <FileText className="h-5 w-5 text-primary" />
+                      <h3 className="font-semibold text-lg">Relevant Notes</h3>
+                    </div>
+                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                      <p className="text-muted-foreground whitespace-pre-wrap">{selectedCall.notes}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => {
+                      const chat = chats.find(c => c.id === selectedCall.chatId);
+                      if (chat) {
+                        setSelectedChatId(selectedCall.chatId);
+                        setSelectedCall(null);
+                        setShowCallHistory(false);
+                        navigate(`/chat/${selectedCall.chatId}`);
+                      }
+                    }}
+                  >
+                    <MessageCircle className="h-4 w-4 mr-2" />
+                    Send Message
+                  </Button>
+                  <Button
+                    className="flex-1"
+                    onClick={() => {
+                      const chat = chats.find(c => c.id === selectedCall.chatId);
+                      if (chat) {
+                        handleCall(selectedCall.chatId);
+                      }
+                    }}
+                  >
+                    <Phone className="h-4 w-4 mr-2" />
+                    Call Again
+                  </Button>
+                </div>
+              </div>
+            </ScrollArea>
+          </>
+        ) : selectedChat ? (
           <>
             {/* Connection Status Banner */}
             {selectedChat.connectionStatus !== "connected" && (
@@ -1993,9 +2716,11 @@ const Chat = () => {
           /* Empty State */
           <div className="flex-1 flex items-center justify-center bg-muted/10">
             <div className="text-center">
-              <h2 className="text-2xl font-semibold text-muted-foreground mb-2">SwapX Chat</h2>
+              <h2 className="text-2xl font-semibold text-muted-foreground mb-2">
+                {showCallHistory ? "Call History" : "SwapX Chat"}
+              </h2>
               <p className="text-sm text-muted-foreground">
-                Select a chat to start messaging
+                {showCallHistory ? "Select a call to view details" : "Select a chat to start messaging"}
               </p>
             </div>
           </div>

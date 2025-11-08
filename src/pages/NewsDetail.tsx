@@ -31,7 +31,7 @@ const NewsDetail = () => {
   }, [id]);
 
   const loadItem = () => {
-    // Load from default news
+    
     const defaultNews: NewsItem[] = [
       {
         id: "news-1",
@@ -246,7 +246,7 @@ Use Git hooks to automate tasks and enforce code quality standards.
       },
     ];
 
-    // Load user blogs from localStorage
+    
     const savedBlogs = JSON.parse(localStorage.getItem("userBlogs") || "[]");
     const allItems = [...defaultNews, ...savedBlogs.map((blog: any) => ({
       ...blog,
@@ -274,7 +274,7 @@ Use Git hooks to automate tasks and enforce code quality standards.
     );
   }
 
-  // Simple markdown-like formatting
+  
   const formatContent = (content: string) => {
     const lines = content.split("\n");
     return lines.map((line, index) => {
@@ -297,7 +297,7 @@ Use Git hooks to automate tasks and enforce code quality standards.
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8 max-w-4xl">
-        {/* Header */}
+        {}
         <div className="mb-6 flex items-center gap-4">
           <Button
             variant="ghost"
@@ -320,7 +320,7 @@ Use Git hooks to automate tasks and enforce code quality standards.
           </div>
         </div>
 
-        {/* Meta Information */}
+        {}
         <Card className="mb-6">
           <CardContent className="p-4">
             <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
@@ -344,7 +344,7 @@ Use Git hooks to automate tasks and enforce code quality standards.
           </CardContent>
         </Card>
 
-        {/* Content */}
+        {}
         <Card>
           <CardContent className="p-8">
             <div className="prose prose-lg max-w-none dark:prose-invert">
@@ -353,7 +353,7 @@ Use Git hooks to automate tasks and enforce code quality standards.
           </CardContent>
         </Card>
 
-        {/* Back Button */}
+        {}
         <div className="mt-6">
           <Button variant="outline" onClick={() => navigate("/news")}>
             <ArrowLeft className="h-4 w-4 mr-2" />

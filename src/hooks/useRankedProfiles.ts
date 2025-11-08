@@ -14,9 +14,8 @@ interface UseRankedProfilesReturn {
   error: string | null;
 }
 
-/**
- * Hook to fetch and rank profiles based on desired skills
- */
+
+
 export function useRankedProfiles(
   desiredSkillsInput: string | string[]
 ): UseRankedProfilesReturn {
@@ -30,35 +29,35 @@ export function useRankedProfiles(
         setLoading(true);
         setError(null);
 
-        // Fetch all profiles
+        
         const profiles = await getAllProfiles();
 
-        // Normalize desired skills
+        
         const desiredArray = typeof desiredSkillsInput === "string"
           ? desiredSkillsInput.split(",").map((s) => s.trim()).filter((s) => s.length > 0)
           : desiredSkillsInput;
 
-        // Score and rank profiles
+        
         const rankedProfiles: RankedProfile[] = profiles.map((profile) => ({
           profile,
           score: scoreProfile(desiredSkillsInput, profile),
         }));
 
-        // Sort: by score desc, then rating desc, then created_at desc
+        
         rankedProfiles.sort((a, b) => {
-          // Primary: score
+          
           if (Math.abs(a.score - b.score) > 0.001) {
             return b.score - a.score;
           }
 
-          // Secondary: rating
+          
           const ratingA = a.profile.rating ?? 0;
           const ratingB = b.profile.rating ?? 0;
           if (ratingA !== ratingB) {
             return ratingB - ratingA;
           }
 
-          // Tertiary: created_at (newer first)
+          
           const dateA = a.profile.created_at ? new Date(a.profile.created_at).getTime() : 0;
           const dateB = b.profile.created_at ? new Date(b.profile.created_at).getTime() : 0;
           return dateB - dateA;

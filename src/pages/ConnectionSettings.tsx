@@ -11,7 +11,7 @@ import { toast } from "sonner";
 
 const ConnectionSettings = () => {
   const defaultSettings = {
-    // Privacy Settings
+    
     showOnlineStatus: true,
     showLastSeen: true,
     allowConnectionRequests: true,
@@ -19,7 +19,7 @@ const ConnectionSettings = () => {
     shareProfileWithConnections: true,
     showTrustScore: true,
     
-    // Notification Settings
+    
     emailNotifications: true,
     pushNotifications: true,
     connectionRequestNotifications: true,
@@ -27,24 +27,24 @@ const ConnectionSettings = () => {
     meetingReminderNotifications: true,
     ratingNotifications: true,
     
-    // Communication Preferences
+    
     allowVideoCalls: true,
     allowVoiceCalls: true,
     autoAcceptMeetings: false,
-    meetingReminderTime: "15", // minutes before meeting
+    meetingReminderTime: "15", 
     
-    // Connection Settings
+    
     autoApproveConnections: false,
     requireVerification: false,
     maxConnections: "100",
     allowPublicProfile: true,
     
-    // Blocked Users
+    
     blockedUsers: [] as string[],
   };
 
   const [settings, setSettings] = useState(() => {
-    // Load settings from localStorage on mount
+    
     const savedSettings = localStorage.getItem("connectionSettings");
     if (savedSettings) {
       try {
@@ -56,7 +56,7 @@ const ConnectionSettings = () => {
     return defaultSettings;
   });
 
-  // Save settings to localStorage whenever they change
+  
   useEffect(() => {
     localStorage.setItem("connectionSettings", JSON.stringify(settings));
   }, [settings]);
@@ -78,7 +78,7 @@ const ConnectionSettings = () => {
   };
 
   const handleSave = () => {
-    // Settings are auto-saved via useEffect, but show confirmation
+    
     toast.success("Settings saved successfully!");
   };
 
@@ -96,7 +96,7 @@ const ConnectionSettings = () => {
         </div>
 
         <div className="space-y-6">
-          {/* Privacy Settings */}
+          {}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -220,7 +220,7 @@ const ConnectionSettings = () => {
             </CardContent>
           </Card>
 
-          {/* Notification Settings */}
+          
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -328,7 +328,7 @@ const ConnectionSettings = () => {
             </CardContent>
           </Card>
 
-          {/* Communication Preferences */}
+          
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -406,7 +406,7 @@ const ConnectionSettings = () => {
             </CardContent>
           </Card>
 
-          {/* Connection Management */}
+          
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -468,7 +468,7 @@ const ConnectionSettings = () => {
             </CardContent>
           </Card>
 
-          {/* Save Button */}
+          
           <div className="flex justify-end gap-4">
             <Button variant="outline" onClick={handleReset}>
               Reset to Defaults

@@ -22,26 +22,26 @@ const Explore = () => {
   const [savingDesiredSkills, setSavingDesiredSkills] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
   
-  // Load desired skills from profile or localStorage
+  
   const [desiredSkillsInput, setDesiredSkillsInput] = useState("");
   
-  // Debounced version of desired skills for API calls
+  
   const [debouncedDesiredSkills, setDebouncedDesiredSkills] = useState(desiredSkillsInput);
   
-  // Use ranked profiles hook
+  
   const { ranked, loading, error } = useRankedProfiles(debouncedDesiredSkills);
   
-  // Filter out current user from ranked profiles
+  
   const filteredRanked = ranked.filter(
     (item) => !user || item.profile.id !== user.id
   );
 
-  // Load my profile on mount
+  
   useEffect(() => {
     const loadMyProfile = async () => {
       if (!user) {
         setLoadingProfile(false);
-        // If not authenticated, fall back to localStorage
+        
         if (typeof window !== "undefined") {
           const stored = localStorage.getItem("swapx.desired_skills") || "";
           setDesiredSkillsInput(stored);
@@ -55,15 +55,15 @@ const Explore = () => {
         const profile = await getMyProfile();
         if (profile) {
           setMyProfile(profile);
-          // Use desired_skills from profile if available, otherwise use skills_to_learn, otherwise fall back to localStorage
-          // Priority: desired_skills > skills_to_learn > localStorage
+          
+          
           let desiredSkills = "";
           if (profile.desired_skills && profile.desired_skills.length > 0) {
             desiredSkills = profile.desired_skills.join(", ");
           } else if (profile.skills_to_learn && profile.skills_to_learn.length > 0) {
-            // Fall back to skills_to_learn if desired_skills is empty
+            
             desiredSkills = profile.skills_to_learn.join(", ");
-            // Also sync desired_skills with skills_to_learn for future use
+            
             try {
               await updateDesiredSkills(profile.skills_to_learn);
               console.log("Synced desired_skills with skills_to_learn");
@@ -77,13 +77,13 @@ const Explore = () => {
           setDesiredSkillsInput(desiredSkills);
           setDebouncedDesiredSkills(desiredSkills);
           
-          // Show banner if both desired_skills and skills_to_learn are empty
+          
           if ((!profile.desired_skills || profile.desired_skills.length === 0) &&
               (!profile.skills_to_learn || profile.skills_to_learn.length === 0)) {
             setShowBanner(true);
           }
         } else {
-          // No profile yet, check localStorage
+          
           if (typeof window !== "undefined") {
             const stored = localStorage.getItem("swapx.desired_skills") || "";
             setDesiredSkillsInput(stored);
@@ -93,7 +93,7 @@ const Explore = () => {
         }
       } catch (error) {
         console.error("Error loading profile:", error);
-        // Fall back to localStorage on error
+        
         if (typeof window !== "undefined") {
           const stored = localStorage.getItem("swapx.desired_skills") || "";
           setDesiredSkillsInput(stored);
@@ -108,7 +108,7 @@ const Explore = () => {
     loadMyProfile();
   }, [user]);
 
-  // Debounce input (250ms)
+  
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedDesiredSkills(desiredSkillsInput);
@@ -117,19 +117,19 @@ const Explore = () => {
     return () => clearTimeout(timer);
   }, [desiredSkillsInput]);
 
-  // Persist to localStorage (fallback for non-authenticated users)
+  
   useEffect(() => {
     if (typeof window !== "undefined" && !user) {
       localStorage.setItem("swapx.desired_skills", desiredSkillsInput);
     }
   }, [desiredSkillsInput, user]);
 
-  // Load sample skills (dev only)
+  
   const loadSampleSkills = useCallback(() => {
     setDesiredSkillsInput("python, react, dsa");
   }, []);
 
-  // Save desired skills to profile (and sync with skills_to_learn)
+  
   const handleSaveDesiredSkills = useCallback(async () => {
     if (!user || !desiredSkillsInput.trim()) {
       toast.error("Please enter skills you want to learn");
@@ -143,10 +143,10 @@ const Explore = () => {
 
     try {
       setSavingDesiredSkills(true);
-      // Update desired_skills
+      
       await updateDesiredSkills(skillsArray);
       
-      // Also update skills_to_learn to keep them in sync
+      
       const { updateMyProfile } = await import("@/lib/profile");
       try {
         await updateMyProfile({
@@ -155,12 +155,12 @@ const Explore = () => {
         console.log("Synced skills_to_learn with desired_skills");
       } catch (syncError) {
         console.warn("Could not sync skills_to_learn:", syncError);
-        // Continue even if sync fails - desired_skills is saved
+        
       }
       
       setShowBanner(false);
       
-      // Reload profile to get updated data
+      
       const updatedProfile = await getMyProfile();
       if (updatedProfile) {
         setMyProfile(updatedProfile);
@@ -168,7 +168,7 @@ const Explore = () => {
       
       toast.success("Skills to learn saved successfully!");
       
-      // Update debounced value to refresh the list
+      
       setDebouncedDesiredSkills(desiredSkillsInput);
     } catch (error) {
       console.error("Error saving desired skills:", error);
@@ -200,7 +200,7 @@ const Explore = () => {
     }
   };
 
-  // Render stars for rating
+  
   const renderRating = (rating: number | null | undefined) => {
     const ratingValue = rating ?? 0;
     const fullStars = Math.floor(ratingValue);
@@ -247,7 +247,7 @@ const Explore = () => {
           </p>
         </div>
 
-        {/* Banner for empty desired_skills */}
+        {}
         {showBanner && user && !loadingProfile && (
           <Card className="mb-4 border-primary/50 bg-primary/5">
             <CardContent className="py-4">
@@ -294,7 +294,7 @@ const Explore = () => {
           </Card>
         )}
 
-        {/* Sticky Search Bar */}
+        {}
         <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 pb-4 mb-6 border-b">
           <div className="space-y-2">
             <Label htmlFor="desired-skills">Skills you want to learn</Label>
@@ -308,7 +308,7 @@ const Explore = () => {
                   value={desiredSkillsInput}
                   onChange={(e) => {
                     setDesiredSkillsInput(e.target.value);
-                    setShowBanner(false); // Hide banner when user starts typing
+                    setShowBanner(false); 
                   }}
                   className="pl-10"
                 />
@@ -354,7 +354,7 @@ const Explore = () => {
           </Card>
         )}
 
-        {/* Results Header */}
+        {}
         {filteredRanked.length > 0 && (
           <div className="mb-4">
             <p className="text-sm text-muted-foreground">
@@ -401,7 +401,7 @@ const Explore = () => {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Rating */}
+                  {}
                   <div className="flex items-center justify-between">
                     {renderRating(profile.rating)}
                     <Badge variant="outline" className="text-xs">

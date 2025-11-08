@@ -5,7 +5,7 @@ const Auth = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Redirect to login by default
+    
     navigate("/auth/login");
   }, [navigate]);
 

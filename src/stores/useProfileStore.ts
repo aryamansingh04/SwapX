@@ -40,7 +40,7 @@ export interface UserProfile {
 }
 
 interface ProfileState {
-  profiles: Record<string, UserProfile>; // Keyed by user ID
+  profiles: Record<string, UserProfile>; 
   getProfile: (userId: string) => UserProfile | null;
   setProfile: (profile: UserProfile) => void;
   updateProfile: (userId: string, updates: Partial<Omit<UserProfile, 'id' | 'email' | 'createdAt'>>) => void;

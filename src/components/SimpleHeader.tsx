@@ -13,13 +13,13 @@ const SimpleHeader = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial user
+    
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
       setLoading(false);
     });
 
-    // Subscribe to auth state changes
+    
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {

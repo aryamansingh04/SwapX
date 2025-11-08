@@ -9,19 +9,14 @@ export interface Message {
   updated_at?: string;
 }
 
-/**
- * Send a message in a connection
- * @param connectionId - The connection ID to send the message to
- * @param content - The message content
- * @returns The inserted message
- * @throws Error if user is not authenticated, connection ID is invalid, or insertion fails
- */
+
+
 export async function sendMessage(
   connectionId: number,
   content: string
 ): Promise<Message> {
   try {
-    // Get the current authenticated user
+    
     const {
       data: { user },
       error: userError,
@@ -43,7 +38,7 @@ export async function sendMessage(
       throw new Error("Message content is required.");
     }
 
-    // Insert message
+    
     const { data, error } = await supabase
       .from("messages")
       .insert({
@@ -71,15 +66,11 @@ export async function sendMessage(
   }
 }
 
-/**
- * Get all messages for a connection
- * @param connectionId - The connection ID to get messages for
- * @returns Array of messages ordered by created_at ascending
- * @throws Error if user is not authenticated, connection ID is invalid, or query fails
- */
+
+
 export async function getMessages(connectionId: number): Promise<Message[]> {
   try {
-    // Get the current authenticated user
+    
     const {
       data: { user },
       error: userError,
@@ -97,7 +88,7 @@ export async function getMessages(connectionId: number): Promise<Message[]> {
       throw new Error("Valid connection ID is required.");
     }
 
-    // Get messages for the connection
+    
     const { data, error } = await supabase
       .from("messages")
       .select("*")

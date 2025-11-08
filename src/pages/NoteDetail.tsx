@@ -9,7 +9,7 @@ import { format } from "date-fns";
 import { useState } from "react";
 import { toast } from "sonner";
 
-// Mock notes data - in a real app, this would come from an API
+
 const mockNotes = [
   {
     id: "1",
@@ -113,7 +113,7 @@ const NoteDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   
-  // Load notes from localStorage and merge with mock data
+  
   const allNotes = (() => {
     const savedNotes = localStorage.getItem("userNotes");
     let userNotes: typeof mockNotes = [];
@@ -129,7 +129,7 @@ const NoteDetail = () => {
         userNotes = [];
       }
     }
-    // Merge with mock notes, avoiding duplicates
+    
     const merged = [...userNotes];
     mockNotes.forEach((mockNote) => {
       if (!merged.find((n) => n.id === mockNote.id)) {
@@ -141,7 +141,7 @@ const NoteDetail = () => {
   
   const note = allNotes.find((n) => n.id === id);
   
-  // Load bookmarked status from localStorage
+  
   const bookmarkedIds = JSON.parse(localStorage.getItem("bookmarkedNotes") || "[]");
   const [isLiked, setIsLiked] = useState(note?.isLiked || false);
   const [isBookmarked, setIsBookmarked] = useState(

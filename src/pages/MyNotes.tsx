@@ -47,13 +47,13 @@ const MyNotes = () => {
   const [newNoteTag, setNewNoteTag] = useState("");
   const [newNoteTags, setNewNoteTags] = useState<string[]>([]);
 
-  // Get notes from localStorage or initialize with empty array
+  
   const [notes, setNotes] = useState<Note[]>(() => {
     const savedNotes = localStorage.getItem("userNotes");
     if (savedNotes) {
       try {
         const parsed = JSON.parse(savedNotes);
-        // Convert date strings back to Date objects
+        
         return parsed.map((note: any) => ({
           ...note,
           createdAt: new Date(note.createdAt),
@@ -66,10 +66,10 @@ const MyNotes = () => {
     return [];
   });
 
-  // Filter notes to show only current user's notes
+  
   const myNotes = notes.filter((note) => note.author.id === user?.id);
 
-  // Save notes to localStorage whenever notes change
+  
   useEffect(() => {
     localStorage.setItem("userNotes", JSON.stringify(notes));
   }, [notes]);
@@ -116,7 +116,7 @@ const MyNotes = () => {
     setNotes([newNote, ...notes]);
     toast.success("Note created successfully!");
     
-    // Reset form
+    
     setNewNoteTitle("");
     setNewNoteContent("");
     setNewNoteTags([]);

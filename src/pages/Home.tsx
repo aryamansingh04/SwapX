@@ -38,23 +38,23 @@ const Home = () => {
   const [minTrustScore, setMinTrustScore] = useState<number>(0);
   const [scheduledMeetings, setScheduledMeetings] = useState<ScheduledMeeting[]>([]);
 
-  // Get all unique skills from users
+  
   const allSkills = Array.from(
     new Set(mockUsers.flatMap(user => user.skillsKnown))
   ).sort();
 
   const filteredUsers = mockUsers.filter(user => {
-    // Search filter
+    
     const matchesSearch = 
       user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.skillsKnown.some(skill => skill.toLowerCase().includes(searchQuery.toLowerCase())) ||
       user.skillsToLearn.some(skill => skill.toLowerCase().includes(searchQuery.toLowerCase()));
 
-    // Skills filter
+    
     const matchesSkills = selectedSkills.length === 0 || 
       selectedSkills.some(skill => user.skillsKnown.includes(skill));
 
-    // Trust score filter
+    
     const matchesTrustScore = user.trustScore >= minTrustScore;
 
     return matchesSearch && matchesSkills && matchesTrustScore;
@@ -75,17 +75,17 @@ const Home = () => {
 
   const activeFilterCount = selectedSkills.length + (minTrustScore > 0 ? 1 : 0);
 
-  // Load scheduled meetings
+  
   useEffect(() => {
     const loadMeetings = () => {
       const meetings = JSON.parse(localStorage.getItem("scheduledMeetings") || "[]");
-      // Filter out past meetings (older than the meeting time)
+      
       const now = new Date();
       const upcomingMeetings = meetings.filter((meeting: ScheduledMeeting) => {
         const meetingDate = new Date(meeting.date);
         return meetingDate >= now;
       });
-      // Sort by date (upcoming first)
+      
       upcomingMeetings.sort((a: ScheduledMeeting, b: ScheduledMeeting) => {
         return new Date(a.date).getTime() - new Date(b.date).getTime();
       });
@@ -94,7 +94,7 @@ const Home = () => {
 
     loadMeetings();
     
-    // Listen for meeting updates
+    
     const handleMeetingsUpdate = () => {
       loadMeetings();
     };
@@ -123,7 +123,7 @@ const Home = () => {
           <div className="mb-6">
             <h1 className="text-3xl font-bold mb-4">People</h1>
             
-            {/* Scheduled Meetings Section */}
+            {}
             {scheduledMeetings.length > 0 && (
               <Card className="mb-6">
                 <CardHeader>

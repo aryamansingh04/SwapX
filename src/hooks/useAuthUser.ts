@@ -7,13 +7,13 @@ export function useAuthUser() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
+    
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
       setLoading(false);
     });
 
-    // Subscribe to auth state changes
+    
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -21,7 +21,7 @@ export function useAuthUser() {
       setLoading(false);
     });
 
-    // Cleanup subscription on unmount
+    
     return () => {
       subscription.unsubscribe();
     };

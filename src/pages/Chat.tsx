@@ -103,10 +103,10 @@ interface CallHistory {
   date: string;
   time: string;
   duration: string;
-  recordedLecture?: string; // URL to recorded lecture
-  notes?: string; // Relevant notes from the call
-  subject?: string; // Subject of the call
-  topics?: string[]; // Topics discussed in the call
+  recordedLecture?: string; 
+  notes?: string; 
+  subject?: string; 
+  topics?: string[]; 
 }
 
 const mockChats: Chat[] = [
@@ -511,7 +511,7 @@ const Chat = () => {
   const [message, setMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedChatId, setSelectedChatId] = useState<string | null>(connectionId || null);
-  const [chats, setChats] = useState<Chat[]>(mockChats); // Initialize with mock chats
+  const [chats, setChats] = useState<Chat[]>(mockChats); 
   const [showCallHistory, setShowCallHistory] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [selectedCall, setSelectedCall] = useState<CallHistory | null>(null);
@@ -519,18 +519,18 @@ const Chat = () => {
   const [newChatName, setNewChatName] = useState("");
   const [newChatAvatar, setNewChatAvatar] = useState("");
 
-  // Load chats from localStorage and connection requests
+  
   useEffect(() => {
     const loadChats = async () => {
-      // Always start with mock chats - these are the dummy chats we want to show
+      
       const chatMap = new Map<string, Chat>();
       
-      // First, add all mock chats (these are always shown)
+      
       mockChats.forEach(chat => {
         chatMap.set(chat.id, chat);
       });
       
-      // Then, load saved chats from localStorage and merge them (but don't override mock chats)
+      
       const savedChats = localStorage.getItem("chats");
       if (savedChats) {
         try {
@@ -543,7 +543,7 @@ const Chat = () => {
             })),
           }));
           
-          // Only add chats from localStorage that don't conflict with mock chats
+          
           loadedChats.forEach((chat: Chat) => {
             if (!chatMap.has(chat.id)) {
               chatMap.set(chat.id, chat);
@@ -551,14 +551,14 @@ const Chat = () => {
           });
         } catch (error) {
           console.error("Error loading chats from localStorage:", error);
-          // If error, just use mock chats
+          
         }
       }
 
-      // Convert chatMap to array for processing
+      
       let allChats: Chat[] = Array.from(chatMap.values());
 
-      // Load connection requests (optional - for future connection features)
+      
       const connectionRequestsSent = JSON.parse(
         localStorage.getItem("connectionRequestsSent") || "[]"
       );
@@ -569,7 +569,7 @@ const Chat = () => {
         localStorage.getItem("connections") || "[]"
       );
 
-      // Update connection status for existing chats based on connections
+      
       allChats = allChats.map((chat) => {
         const isConnected = connections.includes(chat.id);
         const sentRequest = connectionRequestsSent.find((r: any) => r.userId === chat.id);
@@ -593,7 +593,7 @@ const Chat = () => {
         };
       });
 
-      // Try to load from Supabase if user is authenticated (but don't override mock chats)
+      
       if (supabaseUser) {
         try {
           const supabaseConnections = await myConnections();
@@ -602,14 +602,14 @@ const Chat = () => {
               ? connection.partner_id 
               : connection.user_id;
 
-            // Skip if we already have this chat (mock chats take precedence)
+            
             if (chatMap.has(partnerId)) {
-              // Update connection status for existing mock chat
+              
               const existingChat = allChats.find(c => c.id === partnerId);
               if (existingChat) {
                 if (connection.status === "accepted") {
                   existingChat.connectionStatus = "connected";
-                  // Try to load messages from Supabase
+                  
                   try {
                     const supabaseMessages = await getMessages(connection.id);
                     const chatMessages: ChatMessage[] = supabaseMessages.map((msg) => ({
@@ -621,21 +621,21 @@ const Chat = () => {
                       isOwn: msg.sender === supabaseUser.id,
                       status: msg.sender === supabaseUser.id ? "sent" : undefined,
                     }));
-                    // Merge Supabase messages with existing messages (avoid duplicates)
+                    
                     if (chatMessages.length > 0) {
                       const existingMessageIds = new Set(existingChat.messages.map(m => m.id));
                       const newMessages = chatMessages.filter(m => !existingMessageIds.has(m.id));
                       existingChat.messages = [...existingChat.messages, ...newMessages].sort((a, b) => 
                         a.timestamp.getTime() - b.timestamp.getTime()
                       );
-                      // Update last message
+                      
                       if (existingChat.messages.length > 0) {
                         const lastMsg = existingChat.messages[existingChat.messages.length - 1];
                         existingChat.lastMessage = lastMsg.text;
                         existingChat.lastMessageTime = lastMsg.time;
                       }
                     }
-                    // Store connectionId for sending messages
+                    
                     existingChat.connectionId = connection.id;
                   } catch (error) {
                     console.error(`Error loading messages for connection ${connection.id}:`, error);
@@ -649,7 +649,7 @@ const Chat = () => {
               continue;
             }
 
-            // If not a mock chat, try to get profile and create chat entry
+            
             try {
               const partnerProfile = await getProfileById(partnerId);
               if (!partnerProfile) continue;
@@ -658,7 +658,7 @@ const Chat = () => {
               try {
                 allMessages = await getMessages(connection.id);
               } catch (error) {
-                // No messages yet, that's okay
+                
               }
 
               const chatMessages: ChatMessage[] = allMessages.map((msg) => ({
@@ -718,17 +718,17 @@ const Chat = () => {
         }
       }
 
-      // Ensure all chats have connectionStatus
+      
       const allChatsWithStatus = allChats.map((chat) => ({
         ...chat,
         connectionStatus: chat.connectionStatus || "not-connected",
       }));
 
-      // Sort chats: pinned first, then by last message time (most recent first)
+      
       allChatsWithStatus.sort((a, b) => {
         if (a.isPinned && !b.isPinned) return -1;
         if (!a.isPinned && b.isPinned) return 1;
-        // For same pin status, sort by last message time
+        
         const timeA = a.messages.length > 0 
           ? a.messages[a.messages.length - 1].timestamp.getTime()
           : 0;
@@ -744,7 +744,7 @@ const Chat = () => {
 
     loadChats();
 
-    // Listen for updates
+    
     const handleChatsUpdate = () => {
       loadChats();
     };
@@ -757,7 +757,7 @@ const Chat = () => {
     };
   }, []);
   
-  // Mock call history data
+  
   const [callHistory] = useState<CallHistory[]>([
     {
       id: "1",
@@ -855,11 +855,11 @@ const Chat = () => {
     },
   ]);
 
-  // Sync selectedChatId with URL params and clear unread count
+  
   useEffect(() => {
     if (connectionId) {
       setSelectedChatId(connectionId);
-      // Clear unread count when chat is opened via URL
+      
       setChats(prevChats => {
         const updatedChats = prevChats.map(chat =>
           chat.id === connectionId
@@ -869,7 +869,7 @@ const Chat = () => {
         localStorage.setItem("chats", JSON.stringify(updatedChats));
         window.dispatchEvent(new Event("chatsUpdated"));
         
-        // Mark message notifications for this chat as read
+        
         const notifications = JSON.parse(localStorage.getItem("notifications") || "[]");
         const updatedNotifications = notifications.map((n: any) =>
           n.type === "message" && n.chatId === connectionId
@@ -898,17 +898,17 @@ const Chat = () => {
     return matchesSearch && matchesArchiveFilter;
   });
 
-  // Calculate total unread count from non-archived chats
+  
   const totalUnreadCount = chats
     .filter(chat => !chat.isArchived)
     .reduce((total, chat) => total + chat.unreadCount, 0);
 
-  // Auto-scroll to bottom when new messages arrive
+  
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [selectedChat?.messages]);
 
-  // Helper function to format date separators
+  
   const formatDateSeparator = (date: Date) => {
     if (isToday(date)) {
       return "Today";
@@ -919,7 +919,7 @@ const Chat = () => {
     }
   };
 
-  // Helper function to get message status icon
+  
   const getStatusIcon = (status?: string) => {
     switch (status) {
       case "sending":
@@ -935,12 +935,12 @@ const Chat = () => {
     }
   };
 
-  // Helper function to format message time
+  
   const formatMessageTime = (timestamp: Date) => {
     return format(timestamp, "h:mm a");
   };
 
-  // Group messages by date
+  
   const groupMessagesByDate = (messages: ChatMessage[]) => {
     const groups: { date: Date; messages: ChatMessage[] }[] = [];
     let currentDate: Date | null = null;
@@ -968,7 +968,7 @@ const Chat = () => {
     return groups;
   };
 
-  // Helper function to properly serialize chats for localStorage (handles Date objects)
+  
   const saveChatsToStorage = (chatsToSave: Chat[]) => {
     try {
       const serialized = JSON.stringify(chatsToSave.map(chat => ({
@@ -1000,7 +1000,7 @@ const Chat = () => {
       return;
     }
     
-    // Check if connection is accepted
+    
     const currentChat = chats.find(chat => chat.id === selectedChatId);
     if (!currentChat) {
       toast.error("Chat not found");
@@ -1015,13 +1015,13 @@ const Chat = () => {
     const messageText = message.trim();
     const now = new Date();
     
-    // Clear input immediately for better UX
+    
     setMessage("");
     
-    // If we have a connectionId, send via Supabase
+    
     if (currentChat.connectionId && supabaseUser) {
       try {
-        // Create optimistic message immediately for instant UI feedback
+        
         const optimisticMessage: ChatMessage = {
           id: `temp-${Date.now()}`,
           sender: "You",
@@ -1032,7 +1032,7 @@ const Chat = () => {
           status: "sending",
         };
 
-        // Update UI immediately with optimistic message
+        
         setChats(prevChats => {
           const optimisticChats = prevChats.map(chat => {
             if (chat.id === selectedChatId) {
@@ -1049,13 +1049,13 @@ const Chat = () => {
           return optimisticChats;
         });
         
-        // Send message to Supabase
+        
         const sentMessage = await sendMessage(currentChat.connectionId, messageText);
         
-        // Get all messages from Supabase to ensure we have the complete, up-to-date list
+        
         const allSupabaseMessages = await getMessages(currentChat.connectionId);
         
-        // Convert Supabase messages to ChatMessage format
+        
         const allChatMessages: ChatMessage[] = allSupabaseMessages.map((msg) => ({
           id: msg.id.toString(),
           sender: msg.sender === supabaseUser.id ? "You" : currentChat.name,
@@ -1066,13 +1066,13 @@ const Chat = () => {
           status: msg.sender === supabaseUser.id ? "sent" : undefined,
         }));
 
-        // Update chats with all messages from Supabase (replacing optimistic message)
+        
         setChats(prevChats => {
           const finalChats = prevChats.map(chat => {
             if (chat.id === selectedChatId) {
               return {
                 ...chat,
-                messages: allChatMessages, // Replace with complete message list from Supabase
+                messages: allChatMessages, 
                 lastMessage: allChatMessages.length > 0 
                   ? allChatMessages[allChatMessages.length - 1].text 
                   : messageText,
@@ -1092,10 +1092,10 @@ const Chat = () => {
         console.error("Error sending message:", error);
         toast.error(error instanceof Error ? error.message : "Failed to send message");
         
-        // Restore message input on error
+        
         setMessage(messageText);
         
-        // Remove optimistic message on error and restore previous state
+        
         setChats(prevChats => {
           const errorChats = prevChats.map(chat => {
             if (chat.id === selectedChatId) {
@@ -1113,7 +1113,7 @@ const Chat = () => {
       return;
     }
     
-    // Fallback to localStorage for non-Supabase chats
+    
     const newMessage: ChatMessage = {
       id: Date.now().toString(),
       sender: "You",
@@ -1142,7 +1142,7 @@ const Chat = () => {
     
     toast.success("Message sent successfully");
 
-    // Simulate message delivery status updates
+    
     setTimeout(() => {
       setChats(prevChats => {
         const updated = prevChats.map(chat => {
@@ -1184,7 +1184,7 @@ const Chat = () => {
     }, 1000);
   };
 
-  // Message context menu handlers
+  
   const handleCopyMessage = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success("Message copied");
@@ -1192,7 +1192,7 @@ const Chat = () => {
   };
 
   const handleReplyMessage = (message: ChatMessage) => {
-    // In a real app, this would set up a reply context
+    
     toast.success("Reply feature coming soon");
     setSelectedMessageId(null);
   };
@@ -1241,7 +1241,7 @@ const Chat = () => {
     setSelectedMessageId(null);
   };
 
-  // Emoji picker
+  
   const commonEmojis = [
     "😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "😊", "😇",
     "🙂", "🙃", "😉", "😌", "😍", "🥰", "😘", "😗", "😙", "😚",
@@ -1279,7 +1279,7 @@ const Chat = () => {
     setEmojiPickerOpen(false);
   };
 
-  // File attachment handler
+  
   const handleFileAttach = () => {
     fileInputRef.current?.click();
   };
@@ -1288,7 +1288,7 @@ const Chat = () => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    // Check if connection is accepted
+    
     if (!selectedChatId) return;
     const currentChat = chats.find(chat => chat.id === selectedChatId);
     if (currentChat?.connectionStatus !== "connected") {
@@ -1298,15 +1298,15 @@ const Chat = () => {
     }
 
     const file = files[0];
-    const maxSize = 10 * 1024 * 1024; // 10MB
+    const maxSize = 10 * 1024 * 1024; 
 
     if (file.size > maxSize) {
       toast.error("File size should be less than 10MB");
       return;
     }
 
-    // In a real app, you would upload the file and get a URL
-    // For now, we'll just show a toast and add a message with file info
+    
+    
     const fileType = file.type.startsWith("image/") ? "📷 Image" : 
                      file.type.startsWith("video/") ? "🎥 Video" :
                      file.type.includes("pdf") ? "📄 PDF" :
@@ -1314,7 +1314,7 @@ const Chat = () => {
     
     const fileMessage = `${fileType}: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
     
-    // Add the file message to the chat
+    
     if (!selectedChatId) return;
     
     const now = new Date();
@@ -1343,7 +1343,7 @@ const Chat = () => {
     localStorage.setItem("chats", JSON.stringify(updatedChats));
     window.dispatchEvent(new Event("chatsUpdated"));
 
-    // Simulate file upload and message delivery
+    
     setTimeout(() => {
       const currentChats = JSON.parse(localStorage.getItem("chats") || JSON.stringify(updatedChats));
       const updated = currentChats.map((chat: Chat) => {
@@ -1386,12 +1386,12 @@ const Chat = () => {
 
     toast.success(`${fileType} attached: ${file.name}`);
     
-    // Reset file input
+    
     e.target.value = "";
   };
 
   const handleChatSelect = (chatId: string) => {
-    // Clear unread count when chat is selected
+    
     const updatedChats = chats.map(chat =>
       chat.id === chatId
         ? { ...chat, unreadCount: 0 }
@@ -1400,7 +1400,7 @@ const Chat = () => {
     setChats(updatedChats);
     saveChatsToStorage(updatedChats);
     
-    // Mark message notifications for this chat as read
+    
     const notifications = JSON.parse(localStorage.getItem("notifications") || "[]");
     const updatedNotifications = notifications.map((n: any) =>
       n.type === "message" && n.chatId === chatId
@@ -1411,21 +1411,21 @@ const Chat = () => {
     window.dispatchEvent(new Event("notificationsUpdated"));
     
     setSelectedChatId(chatId);
-    setSelectedCall(null); // Clear selected call when selecting a chat
-    setShowCallHistory(false); // Switch back to chat view
+    setSelectedCall(null); 
+    setShowCallHistory(false); 
     navigate(`/chat/${chatId}`);
   };
 
-  // Connection request handlers
+  
   const handleSendConnectionRequest = (chatId: string) => {
-    // Load connection requests
+    
     const connectionRequestsSent = JSON.parse(
       localStorage.getItem("connectionRequestsSent") || "[]"
     );
     const chat = chats.find((c) => c.id === chatId);
     
     if (chat && !connectionRequestsSent.some((r: any) => r.userId === chatId)) {
-      // Add to sent requests
+      
       const newRequest = {
         id: Date.now().toString(),
         userId: chatId,
@@ -1438,20 +1438,20 @@ const Chat = () => {
       connectionRequestsSent.push(newRequest);
       localStorage.setItem("connectionRequestsSent", JSON.stringify(connectionRequestsSent));
 
-      // Update chat status
+      
       setChats((prevChats) =>
         prevChats.map((c) =>
           c.id === chatId ? { ...c, connectionStatus: "pending-sent" as const } : c
         )
       );
 
-      // Save chats
+      
       const updatedChats = chats.map((c) =>
         c.id === chatId ? { ...c, connectionStatus: "pending-sent" as const } : c
       );
       localStorage.setItem("chats", JSON.stringify(updatedChats));
 
-      // Trigger update events
+      
       window.dispatchEvent(new Event("connectionRequestsUpdated"));
       window.dispatchEvent(new Event("chatsUpdated"));
 
@@ -1460,25 +1460,25 @@ const Chat = () => {
   };
 
   const handleAcceptConnection = (chatId: string) => {
-    // Load connection requests
+    
     const connectionRequestsReceived = JSON.parse(
       localStorage.getItem("connectionRequestsReceived") || "[]"
     );
     const connections = JSON.parse(localStorage.getItem("connections") || "[]");
 
-    // Remove from received requests
+    
     const updatedReceived = connectionRequestsReceived.filter(
       (r: any) => (r.userId || r.id) !== chatId
     );
     localStorage.setItem("connectionRequestsReceived", JSON.stringify(updatedReceived));
 
-    // Add to connections
+    
     if (!connections.includes(chatId)) {
       connections.push(chatId);
       localStorage.setItem("connections", JSON.stringify(connections));
     }
 
-    // Update sent request status on the other side
+    
     const connectionRequestsSent = JSON.parse(
       localStorage.getItem("connectionRequestsSent") || "[]"
     );
@@ -1487,7 +1487,7 @@ const Chat = () => {
     );
     localStorage.setItem("connectionRequestsSent", JSON.stringify(updatedSent));
 
-    // Update chat status
+    
     setChats((prevChats) =>
       prevChats.map((chat) =>
         chat.id === chatId
@@ -1496,7 +1496,7 @@ const Chat = () => {
       )
     );
 
-    // Save chats
+    
     const updatedChats = chats.map((chat) =>
       chat.id === chatId
         ? { ...chat, connectionStatus: "connected" as const, lastMessage: "Start a conversation" }
@@ -1504,7 +1504,7 @@ const Chat = () => {
     );
     localStorage.setItem("chats", JSON.stringify(updatedChats));
 
-    // Create a notification
+    
     const notifications = JSON.parse(localStorage.getItem("notifications") || "[]");
     const chat = chats.find((c) => c.id === chatId);
     if (chat) {
@@ -1519,7 +1519,7 @@ const Chat = () => {
         userId: chatId,
       };
       
-      // Mark related connection request notifications as read
+      
       const updatedNotifications = notifications.map((n: any) =>
         n.type === "connection" && (n.userId === chatId || n.message?.includes(chat.name))
           ? { ...n, isRead: true }
@@ -1530,7 +1530,7 @@ const Chat = () => {
       localStorage.setItem("notifications", JSON.stringify(limitedNotifications));
     }
 
-    // Trigger update events
+    
     window.dispatchEvent(new Event("connectionRequestsUpdated"));
     window.dispatchEvent(new Event("chatsUpdated"));
     window.dispatchEvent(new Event("notificationsUpdated"));
@@ -1539,18 +1539,18 @@ const Chat = () => {
   };
 
   const handleRejectConnection = (chatId: string) => {
-    // Load connection requests
+    
     const connectionRequestsReceived = JSON.parse(
       localStorage.getItem("connectionRequestsReceived") || "[]"
     );
 
-    // Remove from received requests
+    
     const updatedReceived = connectionRequestsReceived.filter(
       (r: any) => (r.userId || r.id) !== chatId
     );
     localStorage.setItem("connectionRequestsReceived", JSON.stringify(updatedReceived));
 
-    // Update sent request status on the other side
+    
     const connectionRequestsSent = JSON.parse(
       localStorage.getItem("connectionRequestsSent") || "[]"
     );
@@ -1559,20 +1559,20 @@ const Chat = () => {
     );
     localStorage.setItem("connectionRequestsSent", JSON.stringify(updatedSent));
 
-    // Update chat status
+    
     setChats((prevChats) =>
       prevChats.map((chat) =>
         chat.id === chatId ? { ...chat, connectionStatus: "not-connected" as const } : chat
       )
     );
 
-    // Save chats
+    
     const updatedChats = chats.map((chat) =>
       chat.id === chatId ? { ...chat, connectionStatus: "not-connected" as const } : chat
     );
     localStorage.setItem("chats", JSON.stringify(updatedChats));
 
-    // Mark related connection request notifications as read
+    
     const notifications = JSON.parse(localStorage.getItem("notifications") || "[]");
     const chat = chats.find((c) => c.id === chatId);
     if (chat) {
@@ -1584,7 +1584,7 @@ const Chat = () => {
       localStorage.setItem("notifications", JSON.stringify(updatedNotifications));
     }
 
-    // Trigger update events
+    
     window.dispatchEvent(new Event("connectionRequestsUpdated"));
     window.dispatchEvent(new Event("chatsUpdated"));
     window.dispatchEvent(new Event("notificationsUpdated"));
@@ -1594,10 +1594,10 @@ const Chat = () => {
 
   const handleCall = (chatId?: string) => {
     if (chatId) {
-      // Navigate to meeting scheduler for specific user
+      
       navigate(`/meeting/${chatId}`);
     } else {
-      // Toggle call history view in sidebar
+      
       setShowCallHistory(!showCallHistory);
     }
   };
@@ -1630,7 +1630,7 @@ const Chat = () => {
 
   const handleCallHistoryItemClick = (call: CallHistory) => {
     setSelectedCall(call);
-    setSelectedChatId(null); // Clear selected chat when viewing call details
+    setSelectedChatId(null); 
   };
 
   const handleNewChat = () => {
@@ -1675,7 +1675,7 @@ const Chat = () => {
       navigate("/chat");
       toast.success("Chat archived");
     } else {
-      // Archive all chats
+      
       updatedChats = chats.map(chat => ({ ...chat, isArchived: true }));
       toast.success("All chats archived");
     }
@@ -1687,7 +1687,7 @@ const Chat = () => {
   const handleUnarchiveChat = (chatId?: string) => {
     let updatedChats: Chat[];
     if (chatId) {
-      // Unarchive a specific chat
+      
       updatedChats = chats.map(chat =>
         chat.id === chatId
           ? { ...chat, isArchived: false }
@@ -1695,7 +1695,7 @@ const Chat = () => {
       );
       toast.success("Chat unarchived");
     } else {
-      // Unarchive all chats
+      
       updatedChats = chats.map(chat => ({ ...chat, isArchived: false }));
       setShowArchived(false);
       toast.success("All chats unarchived");
@@ -1717,7 +1717,7 @@ const Chat = () => {
       );
       toast.success(newMuteStatus ? "Chat muted" : "Chat unmuted");
     } else {
-      // Toggle mute for all chats
+      
       const allMuted = chats.every(chat => chat.isMuted);
       updatedChats = chats.map(chat => ({ ...chat, isMuted: !allMuted }));
       toast.success(!allMuted ? "All chats muted" : "All chats unmuted");
@@ -1734,7 +1734,7 @@ const Chat = () => {
       navigate("/chat");
       toast.success("Chat deleted");
     } else {
-      // Delete all chats
+      
       updatedChats = [];
       navigate("/chat");
       toast.success("All chats deleted");
@@ -1748,9 +1748,9 @@ const Chat = () => {
   return (
     <Layout>
       <div className="fixed inset-0 top-16 flex bg-background h-[calc(100vh-4rem)]">
-      {/* Left Sidebar */}
+      {}
       <div className="w-[30%] min-w-[300px] border-r bg-muted/30 flex flex-col">
-        {/* Sidebar Header */}
+        {}
         <div className="p-4 border-b bg-card">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
@@ -1867,7 +1867,7 @@ const Chat = () => {
             </div>
           </div>
           
-          {/* Search Bar */}
+          {}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -1879,7 +1879,7 @@ const Chat = () => {
           </div>
         </div>
 
-        {/* Navigation Icons */}
+        {}
         <div className="flex items-center justify-center gap-2 px-2 py-2 border-b">
           <Button 
             variant={showCallHistory || showArchived ? "outline" : "default"}
@@ -1915,7 +1915,7 @@ const Chat = () => {
           </Button>
         </div>
 
-        {/* Chat List, Call History, or Archived */}
+        {}
         <ScrollArea className="flex-1">
           {showCallHistory ? (
             <div className="divide-y">
@@ -2075,11 +2075,11 @@ const Chat = () => {
         </ScrollArea>
       </div>
 
-      {/* Right Section - Chat Area or Call Details */}
+      {}
       <div className="flex-1 flex flex-col">
         {selectedCall ? (
           <>
-            {/* Call Details Header */}
+            {}
             <div className="p-4 border-b bg-card">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -2124,10 +2124,10 @@ const Chat = () => {
               </div>
             </div>
 
-            {/* Call Details Content */}
+            {}
             <ScrollArea className="flex-1 p-6">
               <div className="max-w-3xl mx-auto space-y-6">
-                {/* Call Icon and Type */}
+                {}
                 <div className="flex flex-col items-center justify-center py-8">
                   <div className={`p-6 rounded-full mb-4 ${
                     selectedCall.type === "incoming" 
@@ -2149,7 +2149,7 @@ const Chat = () => {
                   </Badge>
                 </div>
 
-                {/* Call Information */}
+                {}
                 <div className="bg-card border rounded-lg p-6 space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="flex items-center gap-3">
@@ -2195,7 +2195,7 @@ const Chat = () => {
                   </div>
                 </div>
 
-                {/* Subject */}
+                {}
                 {selectedCall.subject && (
                   <div className="bg-card border rounded-lg p-6">
                     <div className="flex items-center gap-3 mb-3">
@@ -2206,7 +2206,7 @@ const Chat = () => {
                   </div>
                 )}
 
-                {/* Topics Discussed */}
+                {}
                 {selectedCall.topics && selectedCall.topics.length > 0 && (
                   <div className="bg-card border rounded-lg p-6">
                     <div className="flex items-center gap-3 mb-4">
@@ -2223,7 +2223,7 @@ const Chat = () => {
                   </div>
                 )}
 
-                {/* Recorded Lecture */}
+                {}
                 {selectedCall.recordedLecture && (
                   <div className="bg-card border rounded-lg p-6">
                     <div className="flex items-center gap-3 mb-4">
@@ -2250,7 +2250,7 @@ const Chat = () => {
                   </div>
                 )}
 
-                {/* Notes */}
+                {}
                 {selectedCall.notes && (
                   <div className="bg-card border rounded-lg p-6">
                     <div className="flex items-center gap-3 mb-4">
@@ -2263,7 +2263,7 @@ const Chat = () => {
                   </div>
                 )}
 
-                {/* Action Buttons */}
+                {}
                 <div className="flex gap-3 pt-4">
                   <Button
                     variant="outline"
@@ -2299,7 +2299,7 @@ const Chat = () => {
           </>
         ) : selectedChat ? (
           <>
-            {/* Connection Status Banner */}
+            {}
             {selectedChat.connectionStatus !== "connected" && (
               <div className="border-b bg-yellow-500/10 dark:bg-yellow-900/20 border-yellow-500/20 p-3">
                 <div className="flex items-center justify-between">
@@ -2361,7 +2361,7 @@ const Chat = () => {
               </div>
             )}
             
-            {/* Chat Header */}
+            {}
             <div className="p-4 border-b bg-card flex items-center justify-between">
               <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10">
@@ -2441,7 +2441,7 @@ const Chat = () => {
             </div>
           </div>
 
-            {/* Messages Area */}
+            {}
             <ScrollArea className="flex-1 p-4" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%239C92AC\' fill-opacity=\'0.03\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }}>
               {selectedChat.connectionStatus !== "connected" ? (
                 <div className="flex flex-col items-center justify-center h-full text-center p-8">
@@ -2517,13 +2517,13 @@ const Chat = () => {
               <div className="space-y-4 pb-4">
                 {groupMessagesByDate(selectedChat.messages).map((group, groupIndex) => (
                   <div key={groupIndex}>
-                    {/* Date Separator */}
+                    {}
                     <div className="flex justify-center my-4">
                       <div className="px-3 py-1 bg-muted/80 backdrop-blur-sm rounded-full text-xs text-muted-foreground font-medium">
                         {formatDateSeparator(group.date)}
                       </div>
                     </div>
-                    {/* Messages in this group */}
+                    {}
                     {group.messages.map((msg, msgIndex) => (
                       <div
                         key={msg.id}
@@ -2595,7 +2595,7 @@ const Chat = () => {
             ))}
           </div>
                 ))}
-                {/* Typing Indicator */}
+                {}
                 {selectedChat.isTyping && (
                   <div className="flex justify-start mb-1">
                     <div className="bg-white rounded-lg rounded-bl-none px-4 py-3 shadow-sm border border-gray-200">
@@ -2612,10 +2612,10 @@ const Chat = () => {
               )}
             </ScrollArea>
 
-            {/* Message Input */}
+            {}
             {selectedChat.connectionStatus === "connected" ? (
               <div className="p-3 border-t bg-[#F0F2F5] dark:bg-gray-800">
-                {/* Hidden file input */}
+                {}
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -2625,7 +2625,7 @@ const Chat = () => {
                 />
                 
                 <div className="flex items-end gap-2">
-                  {/* Emoji Picker */}
+                  {}
                   <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
                     <PopoverTrigger asChild>
                       <Button 
@@ -2657,7 +2657,7 @@ const Chat = () => {
                     </PopoverContent>
                   </Popover>
                   
-                  {/* File Attachment Button */}
+                  {}
                   <Button 
                     variant="ghost" 
                     size="icon" 
@@ -2728,7 +2728,7 @@ const Chat = () => {
       </div>
       </div>
 
-      {/* New Chat Dialog */}
+      
       <Dialog open={newChatOpen} onOpenChange={setNewChatOpen}>
         <DialogContent>
           <DialogHeader>

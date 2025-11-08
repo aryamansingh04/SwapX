@@ -30,11 +30,11 @@ const SavedNotes = () => {
   const navigate = useNavigate();
   const [savedNotes, setSavedNotes] = useState<Note[]>([]);
 
-  // Load saved notes from localStorage
+  
   useEffect(() => {
     loadSavedNotes();
     
-    // Listen for bookmark updates
+    
     const handleStorageChange = () => {
       loadSavedNotes();
     };
@@ -48,13 +48,13 @@ const SavedNotes = () => {
   }, []);
 
   const loadSavedNotes = () => {
-    // Get all notes (from localStorage and mock data)
+    
     const savedNotesData = localStorage.getItem("userNotes");
     const bookmarkedIds = JSON.parse(localStorage.getItem("bookmarkedNotes") || "[]");
     
     let allNotes: Note[] = [];
     
-    // Load user-created notes
+    
     if (savedNotesData) {
       try {
         const parsed = JSON.parse(savedNotesData);
@@ -68,7 +68,7 @@ const SavedNotes = () => {
       }
     }
     
-    // Load mock notes
+    
     const mockNotes: Note[] = [
       {
         id: "1",
@@ -168,16 +168,16 @@ const SavedNotes = () => {
       },
     ];
     
-    // Merge mock notes with user notes, avoiding duplicates
+    
     mockNotes.forEach((mockNote) => {
       if (!allNotes.find((n) => n.id === mockNote.id)) {
         allNotes.push(mockNote);
       }
     });
     
-    // Filter to only show bookmarked notes
+    
     const bookmarked = allNotes.filter((note) => {
-      // Check if note ID is in bookmarkedIds array
+      
       return bookmarkedIds.includes(note.id) || note.isBookmarked;
     }).map((note) => ({
       ...note,

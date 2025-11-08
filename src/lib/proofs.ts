@@ -16,11 +16,8 @@ export interface ProofWithSkill {
   skill: string;
 }
 
-/**
- * Get all proofs for a specific user
- * @param userId - The user ID to get proofs for
- * @returns Array of proofs
- */
+
+
 export async function getUserProofs(userId: string): Promise<ProofWithSkill[]> {
   try {
     const { data, error } = await supabase
@@ -30,7 +27,7 @@ export async function getUserProofs(userId: string): Promise<ProofWithSkill[]> {
       .order("created_at", { ascending: false });
 
     if (error) {
-      // If table doesn't exist or no proofs, return empty array
+      
       if (error.code === "PGRST116" || error.message.includes("does not exist")) {
         return [];
       }
@@ -41,7 +38,7 @@ export async function getUserProofs(userId: string): Promise<ProofWithSkill[]> {
       return [];
     }
 
-    // Transform database proofs to the format expected by the UI
+    
     return data.map((proof: Proof) => ({
       type: proof.file_type || "pdf",
       url: proof.file_url,
@@ -49,15 +46,13 @@ export async function getUserProofs(userId: string): Promise<ProofWithSkill[]> {
     }));
   } catch (error) {
     console.error("Error fetching proofs:", error);
-    // Return empty array on error instead of throwing
+    
     return [];
   }
 }
 
-/**
- * Get proofs for the current authenticated user
- * @returns Array of proofs
- */
+
+
 export async function getMyProofs(): Promise<ProofWithSkill[]> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -73,14 +68,8 @@ export async function getMyProofs(): Promise<ProofWithSkill[]> {
   }
 }
 
-/**
- * Save a proof to the database
- * @param skill - The skill name
- * @param fileUrl - The URL of the uploaded file
- * @param fileType - The type of file (pdf, video, image)
- * @returns The created proof
- * @throws Error if save fails or user is not authenticated
- */
+
+
 export async function saveProof(
   skill: string,
   fileUrl: string,
@@ -105,7 +94,7 @@ export async function saveProof(
       throw new Error("File URL is required.");
     }
 
-    // Insert proof into database
+    
     console.log("Inserting proof into database:", {
       user_id: user.id,
       skill: skill.trim(),
@@ -126,7 +115,7 @@ export async function saveProof(
 
     if (error) {
       console.error("Error inserting proof:", error);
-      // Check if it's a table doesn't exist error
+      
       if (error.code === "42P01" || error.message.includes("does not exist")) {
         throw new Error(`Proofs table does not exist in database. Please run the migration to create it. Error: ${error.message}`);
       }
@@ -139,7 +128,7 @@ export async function saveProof(
 
     console.log("Proof saved successfully to database:", data);
     
-    // Verify the proof was saved by fetching it immediately
+    
     const { data: verifyData, error: verifyError } = await supabase
       .from("proofs")
       .select("*")

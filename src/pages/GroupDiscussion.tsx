@@ -55,14 +55,14 @@ const GroupDiscussion = () => {
 
   useEffect(() => {
     loadGroups();
-    // Listen for group updates
+    
     window.addEventListener("groupsUpdated", loadGroups);
     return () => {
       window.removeEventListener("groupsUpdated", loadGroups);
     };
   }, []);
 
-  // Reload groups when navigating back to this page
+  
   useEffect(() => {
     if (location.pathname === "/groups") {
       loadGroups();
@@ -73,7 +73,7 @@ const GroupDiscussion = () => {
     const savedGroups = JSON.parse(localStorage.getItem("groups") || "[]");
     
     if (savedGroups.length === 0) {
-      // Create default groups
+      
       const defaultGroups = createDefaultGroups();
       saveGroups(defaultGroups);
       setGroups(formatGroupsForDisplay(defaultGroups));
@@ -289,7 +289,7 @@ const GroupDiscussion = () => {
     saveGroups(updatedGroups);
     setGroups(formatGroupsForDisplay(updatedGroups));
 
-    // Reset form
+    
     setNewGroupName("");
     setNewGroupDescription("");
     setNewGroupTags("");
@@ -297,7 +297,7 @@ const GroupDiscussion = () => {
 
     toast.success("Group created successfully!");
     
-    // Navigate to the new group
+    
     navigate(`/groups/${newGroup.id}`);
   };
 
@@ -399,7 +399,7 @@ const GroupDiscussion = () => {
           </div>
         )}
 
-        {/* Create Group Dialog */}
+        
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogContent>
             <DialogHeader>

@@ -36,14 +36,14 @@ const Dashboard = () => {
     },
   ];
 
-  // Mock scheduled meetings
+  
   const [scheduledMeetings, setScheduledMeetings] = useState([
     {
       id: "1",
       attendeeId: "1",
       attendeeName: "Sarah Johnson",
       attendeeAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah",
-      date: new Date(Date.now() + 86400000), // Tomorrow
+      date: new Date(Date.now() + 86400000), 
       time: "10:00",
       mode: "online" as "online" | "offline",
       location: null as string | null,
@@ -54,7 +54,7 @@ const Dashboard = () => {
       attendeeId: "2",
       attendeeName: "Alex Chen",
       attendeeAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Alex",
-      date: new Date(Date.now() + 172800000), // Day after tomorrow
+      date: new Date(Date.now() + 172800000), 
       time: "14:30",
       mode: "offline" as "online" | "offline",
       location: "Coffee Shop, Downtown",
@@ -65,7 +65,7 @@ const Dashboard = () => {
       attendeeId: "3",
       attendeeName: "Maya Patel",
       attendeeAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Maya",
-      date: new Date(Date.now() + 259200000), // 3 days from now
+      date: new Date(Date.now() + 259200000), 
       time: "16:00",
       mode: "online" as "online" | "offline",
       location: null as string | null,
@@ -73,7 +73,7 @@ const Dashboard = () => {
     },
   ]);
 
-  // Load connection requests from localStorage
+  
   const [connectionRequestsReceived, setConnectionRequestsReceived] = useState(() => {
     const saved = localStorage.getItem("connectionRequestsReceived");
     if (saved) {
@@ -107,7 +107,7 @@ const Dashboard = () => {
     return [];
   });
 
-  // Listen for connection request updates
+  
   useEffect(() => {
     const handleUpdate = () => {
       const savedReceived = localStorage.getItem("connectionRequestsReceived");
@@ -148,26 +148,26 @@ const Dashboard = () => {
   const handleAcceptConnection = (requestId: string) => {
     const request = connectionRequestsReceived.find(r => r.id === requestId);
     if (request) {
-      // Remove from received requests
+      
       const updatedReceived = connectionRequestsReceived.filter(r => r.id !== requestId);
       setConnectionRequestsReceived(updatedReceived);
       localStorage.setItem("connectionRequestsReceived", JSON.stringify(updatedReceived));
 
-      // Add to connections list
+      
       const connections = JSON.parse(localStorage.getItem("connections") || "[]");
       if (!connections.includes(request.userId)) {
         connections.push(request.userId);
         localStorage.setItem("connections", JSON.stringify(connections));
       }
 
-      // Update the sent request on the other side (if it exists)
+      
       const connectionRequestsSent = JSON.parse(localStorage.getItem("connectionRequestsSent") || "[]");
       const updatedSent = connectionRequestsSent.map((r: any) =>
         r.userId === request.userId ? { ...r, status: "accepted" } : r
       );
       localStorage.setItem("connectionRequestsSent", JSON.stringify(updatedSent));
 
-      // Create a notification
+      
       const notifications = JSON.parse(localStorage.getItem("notifications") || "[]");
       const newNotification = {
         id: Date.now().toString(),
@@ -180,7 +180,7 @@ const Dashboard = () => {
         userId: request.userId,
       };
       
-      // Mark related connection request notifications as read
+      
       const updatedNotifications = notifications.map((n: any) =>
         n.type === "connection" && (n.userId === request.userId || n.message?.includes(request.name))
           ? { ...n, isRead: true }
@@ -190,7 +190,7 @@ const Dashboard = () => {
       const limitedNotifications = updatedNotifications.slice(0, 50);
       localStorage.setItem("notifications", JSON.stringify(limitedNotifications));
 
-      // Trigger update events
+      
       window.dispatchEvent(new Event("connectionRequestsUpdated"));
       window.dispatchEvent(new Event("chatsUpdated"));
       window.dispatchEvent(new Event("notificationsUpdated"));
@@ -203,19 +203,19 @@ const Dashboard = () => {
   const handleRejectConnection = (requestId: string) => {
     const request = connectionRequestsReceived.find(r => r.id === requestId);
     if (request) {
-      // Remove from received requests
+      
       const updatedReceived = connectionRequestsReceived.filter(r => r.id !== requestId);
       setConnectionRequestsReceived(updatedReceived);
       localStorage.setItem("connectionRequestsReceived", JSON.stringify(updatedReceived));
 
-      // Update the sent request on the other side (if it exists)
+      
       const connectionRequestsSent = JSON.parse(localStorage.getItem("connectionRequestsSent") || "[]");
       const updatedSent = connectionRequestsSent.map((r: any) =>
         r.userId === request.userId ? { ...r, status: "rejected" } : r
       );
       localStorage.setItem("connectionRequestsSent", JSON.stringify(updatedSent));
 
-      // Mark related connection request notifications as read
+      
       const notifications = JSON.parse(localStorage.getItem("notifications") || "[]");
       const updatedNotifications = notifications.map((n: any) =>
         n.type === "connection" && (n.userId === request.userId || n.message?.includes(request.name))
@@ -224,7 +224,7 @@ const Dashboard = () => {
       );
       localStorage.setItem("notifications", JSON.stringify(updatedNotifications));
 
-      // Trigger update events
+      
       window.dispatchEvent(new Event("connectionRequestsUpdated"));
       window.dispatchEvent(new Event("chatsUpdated"));
       window.dispatchEvent(new Event("notificationsUpdated"));
@@ -236,17 +236,17 @@ const Dashboard = () => {
   const handleCancelConnectionRequest = (requestId: string) => {
     const request = connectionRequestsSent.find(r => r.id === requestId);
     if (request) {
-      // Remove from sent requests
+      
       const updatedSent = connectionRequestsSent.filter(r => r.id !== requestId);
       setConnectionRequestsSent(updatedSent);
       localStorage.setItem("connectionRequestsSent", JSON.stringify(updatedSent));
 
-      // Remove from received requests on the other side (if it exists)
+      
       const connectionRequestsReceived = JSON.parse(localStorage.getItem("connectionRequestsReceived") || "[]");
       const updatedReceived = connectionRequestsReceived.filter((r: any) => r.userId !== request.userId);
       localStorage.setItem("connectionRequestsReceived", JSON.stringify(updatedReceived));
 
-      // Trigger update events
+      
       window.dispatchEvent(new Event("connectionRequestsUpdated"));
       window.dispatchEvent(new Event("chatsUpdated"));
 
@@ -296,7 +296,7 @@ const Dashboard = () => {
           })}
         </div>
 
-        {/* Badges Card - Full width */}
+        {}
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -322,9 +322,9 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Connection Requests and Active Connections Section */}
+        {}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Connection Requests */}
+          {}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -355,7 +355,7 @@ const Dashboard = () => {
                   </TabsTrigger>
                 </TabsList>
 
-                {/* Received Requests Tab */}
+                {}
                 <TabsContent value="received" className="space-y-2 mt-3">
                   {connectionRequestsReceived.length === 0 ? (
                     <div className="text-center py-6 text-muted-foreground">
@@ -400,7 +400,7 @@ const Dashboard = () => {
                   )}
                 </TabsContent>
 
-                {/* Sent Requests Tab */}
+                {}
                 <TabsContent value="sent" className="space-y-2 mt-3">
                   {connectionRequestsSent.length === 0 ? (
                     <div className="text-center py-6 text-muted-foreground">
@@ -453,7 +453,7 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          {/* Active Connections */}
+          {}
           <Card>
             <CardHeader>
               <CardTitle>Active Connections</CardTitle>
@@ -485,7 +485,7 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Scheduled Meetings Section */}
+        {}
         <Card className="mb-6">
             <CardHeader>
             <CardTitle className="flex items-center gap-2">

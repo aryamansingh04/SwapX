@@ -355,7 +355,7 @@ Use Git hooks to automate tasks and enforce code quality standards.
           )}
         </div>
 
-        {/* Search */}
+        {}
         <div className="mb-6">
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -368,7 +368,7 @@ Use Git hooks to automate tasks and enforce code quality standards.
           </div>
         </div>
 
-        {/* Tabs */}
+        {}
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "news" | "blogs")}>
           <TabsList>
             <TabsTrigger value="news">
@@ -500,7 +500,7 @@ Use Git hooks to automate tasks and enforce code quality standards.
           </TabsContent>
         </Tabs>
 
-        {/* Create Blog Dialog */}
+        {}
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>

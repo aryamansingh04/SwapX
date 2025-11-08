@@ -22,11 +22,8 @@ export interface UpdateNoteData {
   is_public?: boolean;
 }
 
-/**
- * Get all public notes
- * @returns Array of public notes ordered by created_at descending
- * @throws Error if the query fails
- */
+
+
 export async function listPublicNotes(): Promise<Note[]> {
   try {
     const { data, error } = await supabase
@@ -48,14 +45,11 @@ export async function listPublicNotes(): Promise<Note[]> {
   }
 }
 
-/**
- * Get all notes authored by the current user
- * @returns Array of user's notes ordered by created_at descending
- * @throws Error if user is not authenticated or query fails
- */
+
+
 export async function myNotes(): Promise<Note[]> {
   try {
-    // Get the current authenticated user
+    
     const {
       data: { user },
       error: userError,
@@ -69,7 +63,7 @@ export async function myNotes(): Promise<Note[]> {
       throw new Error("User is not authenticated. Please sign in first.");
     }
 
-    // Get notes authored by the current user
+    
     const { data, error } = await supabase
       .from("notes")
       .select("*")
@@ -89,15 +83,11 @@ export async function myNotes(): Promise<Note[]> {
   }
 }
 
-/**
- * Create a new note
- * @param noteData - Note data to create
- * @returns Created note
- * @throws Error if user is not authenticated or creation fails
- */
+
+
 export async function createNote(noteData: CreateNoteData): Promise<Note> {
   try {
-    // Get the current authenticated user
+    
     const {
       data: { user },
       error: userError,
@@ -119,7 +109,7 @@ export async function createNote(noteData: CreateNoteData): Promise<Note> {
       throw new Error("Note body is required.");
     }
 
-    // Insert note with author = current user's ID
+    
     const { data, error } = await supabase
       .from("notes")
       .insert({
@@ -148,20 +138,14 @@ export async function createNote(noteData: CreateNoteData): Promise<Note> {
   }
 }
 
-/**
- * Update a note
- * Only the note author can update their own notes
- * @param id - The note ID to update
- * @param patch - Partial note data to update
- * @returns Updated note
- * @throws Error if user is not authenticated, not authorized, or update fails
- */
+
+
 export async function updateNote(
   id: number,
   patch: UpdateNoteData
 ): Promise<Note> {
   try {
-    // Get the current authenticated user
+    
     const {
       data: { user },
       error: userError,
@@ -179,7 +163,7 @@ export async function updateNote(
       throw new Error("Valid note ID is required.");
     }
 
-    // First, verify that this note belongs to the current user
+    
     const { data: note, error: fetchError } = await supabase
       .from("notes")
       .select("*")
@@ -194,14 +178,14 @@ export async function updateNote(
       throw new Error("Note not found.");
     }
 
-    // Verify the user is the author
+    
     if (note.author !== user.id) {
       throw new Error(
         "Unauthorized: You can only update your own notes."
       );
     }
 
-    // Prepare update data (only include defined fields)
+    
     const updateData: Record<string, any> = {};
     if (patch.title !== undefined) {
       if (patch.title.trim() === "") {
@@ -219,7 +203,7 @@ export async function updateNote(
       updateData.is_public = patch.is_public;
     }
 
-    // Update note
+    
     const { data, error } = await supabase
       .from("notes")
       .update(updateData)
@@ -244,15 +228,11 @@ export async function updateNote(
   }
 }
 
-/**
- * Delete a note
- * Only the note author can delete their own notes
- * @param id - The note ID to delete
- * @throws Error if user is not authenticated, not authorized, or deletion fails
- */
+
+
 export async function deleteNote(id: number): Promise<void> {
   try {
-    // Get the current authenticated user
+    
     const {
       data: { user },
       error: userError,
@@ -270,7 +250,7 @@ export async function deleteNote(id: number): Promise<void> {
       throw new Error("Valid note ID is required.");
     }
 
-    // First, verify that this note belongs to the current user
+    
     const { data: note, error: fetchError } = await supabase
       .from("notes")
       .select("*")
@@ -285,14 +265,14 @@ export async function deleteNote(id: number): Promise<void> {
       throw new Error("Note not found.");
     }
 
-    // Verify the user is the author
+    
     if (note.author !== user.id) {
       throw new Error(
         "Unauthorized: You can only delete your own notes."
       );
     }
 
-    // Delete note
+    
     const { error } = await supabase
       .from("notes")
       .delete()

@@ -16,28 +16,28 @@ const Landing = () => {
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signup");
 
-  // Listen for auth state changes and close dialog on successful auth
+  
   useEffect(() => {
     let mounted = true;
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // Only handle SIGNED_IN event when auth dialog is open (user signing in from landing page)
-      // Don't interfere if user is already navigating elsewhere
+      
+      
       if (event === "SIGNED_IN" && session?.user && mounted && authOpen) {
-        // Check if we're still on the landing page (not navigating away)
+        
         if (window.location.pathname === "/") {
           setAuthOpen(false);
           
-          // Small delay to ensure session is fully established
+          
           setTimeout(async () => {
             if (!mounted || window.location.pathname !== "/") return;
             
             try {
               const profile = await getMyProfile();
               
-              // Only navigate if we're still on landing page
+              
               if (mounted && window.location.pathname === "/") {
                 if (!profile) {
                   navigate("/profile/setup", { replace: true });
@@ -47,7 +47,7 @@ const Landing = () => {
               }
             } catch (error) {
               console.error("Error checking profile:", error);
-              // On error, only navigate if still on landing page
+              
               if (mounted && window.location.pathname === "/") {
                 navigate("/profile/setup", { replace: true });
               }
@@ -105,7 +105,7 @@ const Landing = () => {
 
   return (
     <div className="min-h-screen bg-[image:var(--gradient-soft)]">
-      {/* Header */}
+      {}
       <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-2">
@@ -128,10 +128,10 @@ const Landing = () => {
       </header>
 
       <main>
-        {/* Hero Section */}
+        {}
         <section className="container mx-auto px-4 py-20 md:py-32">
           <div className="max-w-4xl mx-auto">
-            {/* Text Content */}
+            {}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -171,7 +171,7 @@ const Landing = () => {
             </motion.div>
           </div>
 
-          {/* Stats */}
+          {}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -187,7 +187,7 @@ const Landing = () => {
           </motion.div>
         </section>
 
-        {/* Features Section */}
+        {}
         <section className="container mx-auto px-4 py-20">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -234,7 +234,7 @@ const Landing = () => {
           </div>
         </section>
 
-        {/* How It Works Section */}
+        {}
         <section className="container mx-auto px-4 py-20">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -289,7 +289,7 @@ const Landing = () => {
           </div>
         </section>
 
-        {/* CTA Section */}
+        {}
         <section className="container mx-auto px-4 py-20">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -332,7 +332,7 @@ const Landing = () => {
         </section>
       </main>
 
-      {/* Footer */}
+      {}
       <footer className="border-t mt-20">
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
@@ -351,7 +351,7 @@ const Landing = () => {
         </div>
       </footer>
 
-      {/* Auth Dialog */}
+      {}
       <Dialog open={authOpen} onOpenChange={setAuthOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

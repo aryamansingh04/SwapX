@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import AuthGate from "@/components/AuthGate";
 
-// Pages
+
 import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
@@ -59,13 +59,13 @@ const App = () => (
           }}
         >
           <Routes>
-            {/* Public Routes */}
+            {}
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/auth/login" element={<Login />} />
             <Route path="/auth/signup" element={<Signup />} />
 
-            {/* Protected Routes */}
+            {}
             <Route
               path="/explore"
               element={<Explore />}
@@ -259,7 +259,7 @@ const App = () => (
               }
             />
 
-            {/* 404 */}
+            {}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

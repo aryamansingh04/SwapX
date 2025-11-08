@@ -28,10 +28,10 @@ const MeetingScheduler = () => {
   const [time, setTime] = useState("10:00");
   const [isScheduling, setIsScheduling] = useState(false);
 
-  // Get user info if called from a specific chat
+  
   const getChatUserInfo = async () => {
     if (id && id !== "new") {
-      // Try to get user profile from Supabase first
+      
       if (supabaseUser || authStoreUser) {
         try {
           const profile = await getProfileById(id);
@@ -47,7 +47,7 @@ const MeetingScheduler = () => {
         }
       }
       
-      // Fall back to mock chat users
+      
       const chatUsers: Record<string, { id: string; name: string; avatar: string }> = {
         "1": { id: "1", name: "Sarah Johnson", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah" },
         "2": { id: "2", name: "Alex Chen", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Alex" },
@@ -64,7 +64,7 @@ const MeetingScheduler = () => {
   const [meetingLink, setMeetingLink] = useState<string | null>(null);
   const [location, setLocation] = useState("");
 
-  // Load chat user info on mount
+  
   useEffect(() => {
     const loadChatUser = async () => {
       const user = await getChatUserInfo();
@@ -99,7 +99,7 @@ const MeetingScheduler = () => {
                             "You";
     
     try {
-      // 1. Store meeting in localStorage for home page display
+      
       const meetings = JSON.parse(localStorage.getItem("scheduledMeetings") || "[]");
       const meetingId = `meeting-${Date.now()}`;
       const newMeeting = {
@@ -119,10 +119,10 @@ const MeetingScheduler = () => {
       localStorage.setItem("scheduledMeetings", JSON.stringify(meetings));
       window.dispatchEvent(new Event("meetingsUpdated"));
       
-      // 2. Send chat message to the person
+      
       if (supabaseUser || authStoreUser) {
         try {
-          // Get connection ID for this user
+          
           const connections = await myConnections();
           const connection = connections.find(
             conn => (conn.user_id === (supabaseUser?.id || authStoreUser?.id) && conn.partner_id === chatUser.id) ||
@@ -130,7 +130,7 @@ const MeetingScheduler = () => {
           );
           
           if (connection && connection.status === "accepted") {
-            // Send meeting message via Supabase
+            
             const meetingMessage = mode === "online"
               ? `📅 Meeting scheduled for ${format(meetingDate, "MMM d, yyyy 'at' h:mm a")}\n\n${jitsiLink ? `Meeting Link: ${jitsiLink}` : "Online meeting via Jitsi"}`
               : `📅 Meeting scheduled for ${format(meetingDate, "MMM d, yyyy 'at' h:mm a")}\n\n📍 Location: ${location || "To be determined"}`;
@@ -138,12 +138,12 @@ const MeetingScheduler = () => {
             await sendMessage(connection.id, meetingMessage);
             console.log("Meeting message sent via Supabase");
           } else {
-            // No Supabase connection, send to localStorage chat
+            
             const chats = JSON.parse(localStorage.getItem("chats") || "[]");
             let chat = chats.find((c: any) => c.id === chatUser.id);
             
             if (!chat) {
-              // Create new chat if it doesn't exist
+              
               chat = {
                 id: chatUser.id,
                 name: attendeeName,
@@ -186,11 +186,11 @@ const MeetingScheduler = () => {
           }
         } catch (chatError) {
           console.error("Error sending meeting message:", chatError);
-          // Continue even if chat message fails
+          
         }
       }
       
-      // 3. Create notification for meeting reminder
+      
       const notifications = JSON.parse(localStorage.getItem("notifications") || "[]");
       const newNotification = {
         id: Date.now().toString() + "-meeting",
@@ -203,7 +203,7 @@ const MeetingScheduler = () => {
       };
       notifications.unshift(newNotification);
       
-      // Also create a reminder notification (30 minutes before)
+      
       const reminderTime = new Date(meetingDate.getTime() - 30 * 60 * 1000);
       if (reminderTime > new Date()) {
         const reminderNotification = {
@@ -218,7 +218,7 @@ const MeetingScheduler = () => {
         notifications.unshift(reminderNotification);
       }
       
-      // Keep only last 50 notifications
+      
       const limitedNotifications = notifications.slice(0, 50);
       localStorage.setItem("notifications", JSON.stringify(limitedNotifications));
       window.dispatchEvent(new Event("notificationsUpdated"));
@@ -228,7 +228,7 @@ const MeetingScheduler = () => {
         : `Meeting scheduled! A message has been sent to ${attendeeName}.`
       );
       
-      // Navigate to chat after a short delay
+      
       setTimeout(() => {
         if (chatUser && id) {
           navigate(`/chat/${id}`);
@@ -244,7 +244,7 @@ const MeetingScheduler = () => {
     }
   };
 
-  // Handle ending a scheduled meeting (for future scheduled meetings)
+  
   const handleEndScheduledMeeting = () => {
     if (!chatUser) {
       toast.error("Cannot end meeting: No attendee information");
@@ -263,7 +263,7 @@ const MeetingScheduler = () => {
   };
 
   const handleStartNow = () => {
-    // Start an immediate video call
+    
     const jitsiLink = `https://meet.jit.si/swapx-${Date.now()}`;
     setMeetingLink(jitsiLink);
     setIsMeetingActive(true);
@@ -277,10 +277,10 @@ const MeetingScheduler = () => {
       return;
     }
     
-    // Generate session ID for the meeting
+    
     const sessionId = `session-${Date.now()}`;
     
-    // Navigate to rating page with attendee information
+    
     const params = new URLSearchParams({
       attendeeId: chatUser.id,
       attendeeName: chatUser.name,
@@ -291,7 +291,7 @@ const MeetingScheduler = () => {
     toast.info("Meeting ended. Please rate your session partner.");
   };
 
-  // If meeting is active, show meeting controls
+  
   if (isMeetingActive && chatUser) {
     return (
       <Layout>

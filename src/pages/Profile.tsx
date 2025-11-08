@@ -33,18 +33,18 @@ const Profile = () => {
   const [selectedFiles, setSelectedFiles] = useState<Record<string, File>>({});
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   
-  // Track if we need to force a refresh
+  
   const [refreshKey, setRefreshKey] = useState(0);
   
-  // Calculate if viewing own profile early (before useEffect hooks)
+  
   const currentUserId = supabaseUser?.id || user?.id;
   const isOwnProfile = !id || id === currentUserId || id === user?.id;
   const profileId = id || currentUserId;
   
-  // Load profile and proofs from Supabase
+  
   useEffect(() => {
     const loadProfileAndProofs = async () => {
-      // Use the pre-calculated values
+      
       if (isOwnProfile && supabaseUser) {
         try {
           setLoading(true);
@@ -60,11 +60,11 @@ const Profile = () => {
             setSupabaseProfile(null);
           }
           
-          // Load proofs for own profile - always load from Supabase first
+          
           if (supabaseUser.id) {
             try {
               console.log("Loading proofs for own profile from Supabase, user ID:", supabaseUser.id);
-              // Use getMyProofs() which is more reliable for authenticated users
+              
               const userProofs = await getMyProofs();
               console.log("Loaded proofs from Supabase:", userProofs);
               
@@ -74,11 +74,11 @@ const Profile = () => {
               } else {
                 console.log("No proofs found in Supabase, setting empty array");
                 setProofs([]);
-                // Don't fall back to mock proofs for own profile - we want real data from Supabase
+                
               }
             } catch (proofError) {
               console.error("Error loading proofs from Supabase:", proofError);
-              // Try fallback to getUserProofs
+              
               try {
                 const fallbackProofs = await getUserProofs(supabaseUser.id);
                 console.log("Fallback: Loaded proofs via getUserProofs:", fallbackProofs);
@@ -95,7 +95,7 @@ const Profile = () => {
           }
         } catch (error) {
           console.error("Error loading profile:", error);
-          // If error is "not authenticated", it's fine - user might not have profile yet
+          
           if (error instanceof Error && !error.message.includes("not authenticated")) {
             setSupabaseProfile(null);
           }
@@ -103,7 +103,7 @@ const Profile = () => {
           setLoading(false);
         }
       } else if (profileId && id) {
-        // Viewing another user's profile - try to load from Supabase first
+        
         try {
           setLoading(true);
           const profile = await getProfileById(id);
@@ -111,13 +111,13 @@ const Profile = () => {
             setSupabaseProfile(profile);
           }
           
-          // Load proofs for this user
+          
           try {
             const userProofs = await getUserProofs(id);
             if (userProofs && userProofs.length > 0) {
               setProofs(userProofs);
             } else {
-              // Fall back to mock proofs if available
+              
               const foundProfile = mockUsers.find(p => p.id === id);
               if (foundProfile?.proofs && foundProfile.proofs.length > 0) {
                 setProofs(foundProfile.proofs);
@@ -125,7 +125,7 @@ const Profile = () => {
             }
           } catch (proofError) {
             console.error("Error loading proofs:", proofError);
-            // Fall back to mock proofs if available
+            
             const foundProfile = mockUsers.find(p => p.id === id);
             if (foundProfile?.proofs && foundProfile.proofs.length > 0) {
               setProofs(foundProfile.proofs);
@@ -133,7 +133,7 @@ const Profile = () => {
           }
         } catch (error) {
           console.error("Error loading user profile:", error);
-          // Fall back to mock data - load mock proofs if available
+          
           const foundProfile = mockUsers.find(p => p.id === id);
           if (foundProfile?.proofs && foundProfile.proofs.length > 0) {
             setProofs(foundProfile.proofs);
@@ -142,16 +142,16 @@ const Profile = () => {
           setLoading(false);
         }
       } else if (!id && !supabaseUser && !user) {
-        // No user, no ID - wait for auth to load
+        
         setLoading(true);
       } else {
-        // Viewing another user's profile or no auth needed - try to load mock proofs
+        
         if (id) {
   const foundProfile = mockUsers.find(p => p.id === id);
           if (foundProfile?.proofs && foundProfile.proofs.length > 0) {
             setProofs(foundProfile.proofs);
           } else {
-            // Try to load from Supabase even if no mock profile found
+            
             try {
               const userProofs = await getUserProofs(id);
               if (userProofs.length > 0) {
@@ -166,15 +166,15 @@ const Profile = () => {
       }
     };
     loadProfileAndProofs();
-    // Note: getMyProfile and getProfileById are stable and don't need to be in deps
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
+    
   }, [id, supabaseUser, user, refreshKey, isOwnProfile, currentUserId]);
   
-  // Refresh profile when navigating from profile setup
+  
   useEffect(() => {
     if (location.state?.refresh) {
       console.log("Refreshing profile due to navigation state");
-      // Force reload profile from Supabase
+      
       const reloadProfile = async () => {
         if (isOwnProfile && supabaseUser) {
           try {
@@ -188,7 +188,7 @@ const Profile = () => {
               });
               setSupabaseProfile(freshProfile);
               
-              // Also reload proofs from Supabase
+              
               try {
                 console.log("Reloading proofs after profile refresh");
                 const userProofs = await getMyProofs();
@@ -196,7 +196,7 @@ const Profile = () => {
                 if (userProofs && userProofs.length > 0) {
                   setProofs(userProofs);
                 } else {
-                  // Try fallback
+                  
                   const fallbackProofs = await getUserProofs(supabaseUser.id);
                   if (fallbackProofs && fallbackProofs.length > 0) {
                     setProofs(fallbackProofs);
@@ -206,7 +206,7 @@ const Profile = () => {
                 }
               } catch (proofError) {
                 console.error("Error reloading proofs:", proofError);
-                // Try fallback
+                
                 try {
                   const fallbackProofs = await getUserProofs(supabaseUser.id);
                   if (fallbackProofs) {
@@ -225,18 +225,18 @@ const Profile = () => {
         }
       };
       reloadProfile();
-      // Clear the state to prevent infinite refreshes
+      
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location.state, location.pathname, navigate, isOwnProfile, supabaseUser]);
 
-  // Listen for focus events to refresh profile when returning to the page
+  
   useEffect(() => {
     const handleFocus = () => {
-      // Reload profile when window regains focus (user returns to tab)
+      
       if (supabaseUser || user) {
         if (isOwnProfile && supabaseUser) {
-          // Reload own profile and proofs from Supabase
+          
           const reloadData = async () => {
             try {
               const freshProfile = await getMyProfile();
@@ -248,7 +248,7 @@ const Profile = () => {
                 });
               }
               
-              // Also reload proofs
+              
               const freshProofs = await getMyProofs();
               if (freshProofs) {
                 console.log("Proofs refreshed on focus:", freshProofs.length, "proofs");
@@ -260,7 +260,7 @@ const Profile = () => {
           };
           reloadData();
         } else if (profileId && id) {
-          // Reload other user's profile
+          
           getProfileById(id).then((profile) => {
             if (profile) {
               setSupabaseProfile(profile);
@@ -274,25 +274,25 @@ const Profile = () => {
     return () => window.removeEventListener('focus', handleFocus);
   }, [id, supabaseUser, user, isOwnProfile, profileId]);
   
-  // Try to get profile from profile store first (for logged-in user's own profile)
+  
   const storedProfile = profileId ? getProfile(profileId) : null;
   
-  // Find the profile from mockUsers based on id (for other users)
+  
   const foundProfile = id ? mockUsers.find(p => p.id === id) : null;
 
-  // Determine which profile to use
+  
   let profile;
   
-  // Priority: Supabase profile > stored profile > mock profile > defaults
+  
   if (supabaseProfile) {
-    // Use Supabase profile data (for both own and other users' profiles)
-    // Ensure skills_to_learn is always an array, handle null/undefined cases
+    
+    
     const skillsToLearn = supabaseProfile.skills_to_learn;
     const skillsToLearnArray = Array.isArray(skillsToLearn) 
       ? skillsToLearn 
       : (skillsToLearn ? [skillsToLearn] : []);
     
-    // Debug log to see what we're getting
+    
     console.log("Building profile from Supabase data:", {
       id: supabaseProfile.id,
       skills: supabaseProfile.skills,
@@ -322,7 +322,7 @@ const Profile = () => {
       skillsLearning: profile.skillsLearning,
     });
   } else if (storedProfile && isOwnProfile) {
-    // Use stored profile data for logged-in user (their isolated data)
+    
     profile = {
       id: storedProfile.id,
       name: storedProfile.name,
@@ -332,15 +332,15 @@ const Profile = () => {
       skillsKnown: storedProfile.skills || [],
       skillsLearning: storedProfile.skillsToLearn || [],
       occupation: storedProfile.occupation,
-      rating: 4.8, // Default, could be calculated from reviews
-      totalSessions: 0, // Default, could be stored in profile
-      connections: 0, // Default, could be stored in profile
+      rating: 4.8, 
+      totalSessions: 0, 
+      connections: 0, 
       github: storedProfile.github,
       linkedin: storedProfile.linkedin,
       availability: storedProfile.availability,
     };
   } else if (foundProfile) {
-    // Use mock data for other users
+    
     profile = {
     id: foundProfile.id,
     name: foundProfile.name,
@@ -356,7 +356,7 @@ const Profile = () => {
     linkedin: foundProfile.linkedin,
     };
   } else {
-    // Fallback to current user or defaults
+    
     profile = {
       id: profileId || "1",
     name: user?.name || "John Doe",
@@ -375,7 +375,7 @@ const Profile = () => {
   }
 
 
-  // Show loading state while checking authentication or loading profile
+  
   if (loading) {
     return (
       <Layout>
@@ -393,7 +393,7 @@ const Profile = () => {
     );
   }
 
-  // Show empty state with call-to-action if no profile exists for own profile
+  
   if (isOwnProfile && !supabaseProfile && !storedProfile && !loading && (supabaseUser || user)) {
     const currentUser = supabaseUser || user;
     return (
@@ -524,7 +524,7 @@ const Profile = () => {
               )}
             </div>
 
-            {/* Compulsory Proof Upload Section - Only for own profile with skills */}
+            {}
             {isOwnProfile && profile.skillsKnown && profile.skillsKnown.length > 0 && (
               <div className="space-y-4">
                 <div>
@@ -633,7 +633,7 @@ const Profile = () => {
                                       try {
                                         setUploadingProofs(prev => ({ ...prev, [skill]: true }));
                                         
-                                        // Determine file type
+                                        
                                         const fileName = selectedFile.name.toLowerCase();
                                         let fileType = "pdf";
                                         if (fileName.endsWith(".pdf")) fileType = "pdf";
@@ -641,26 +641,26 @@ const Profile = () => {
                                         else if (fileName.match(/\.(jpg|jpeg|png|gif)$/)) fileType = "image";
                                         else if (fileName.match(/\.(mp4|mov|avi|webm)$/)) fileType = "video";
                                         
-                                        // Upload file to storage
+                                        
                                         console.log(`Uploading proof for skill: ${skill}`);
                                         const fileUrl = await uploadProof(selectedFile);
                                         console.log(`File uploaded successfully. URL: ${fileUrl}`);
                                         
-                                        // Save proof to database
+                                        
                                         console.log(`Saving proof to database for skill: ${skill}`);
                                         const savedProof = await saveProof(skill, fileUrl, fileType);
                                         console.log(`Proof saved to database:`, savedProof);
                                         
-                                        // Verify proof was saved by reloading from Supabase
+                                        
                                         if (supabaseUser.id) {
                                           console.log(`Reloading proofs from Supabase for user: ${supabaseUser.id}`);
                                           const updatedProofs = await getUserProofs(supabaseUser.id);
                                           console.log(`Loaded ${updatedProofs.length} proofs from Supabase:`, updatedProofs);
                                           
-                                          // Update state with fresh proofs from Supabase
+                                          
                                           setProofs(updatedProofs);
                                           
-                                          // Verify the proof we just uploaded is in the list
+                                          
                                           const newlyUploadedProof = updatedProofs.find(p => 
                                             p.skill.toLowerCase() === skill.toLowerCase() && 
                                             p.url === fileUrl
@@ -673,7 +673,7 @@ const Profile = () => {
                                           }
                                         }
                                         
-                                        // Clear selected file
+                                        
                                         setSelectedFiles(prev => {
                                           const updated = { ...prev };
                                           delete updated[skill];
@@ -682,10 +682,10 @@ const Profile = () => {
                                         
                                         toast.success(`Proof uploaded successfully for ${skill}! It will now appear on your profile.`);
                                         
-                                        // Force refresh to ensure UI updates
+                                        
                                         setRefreshKey(prev => prev + 1);
                                         
-                                        // Also reload profile data to ensure everything is in sync
+                                        
                                         try {
                                           const freshProfile = await getMyProfile();
                                           if (freshProfile) {
@@ -758,7 +758,7 @@ const Profile = () => {
               )}
             </div>
             
-            {/* Skill Proofs Section - Always show if user has skills */}
+            {}
             {profile.skillsKnown && profile.skillsKnown.length > 0 && (
               <div>
                 <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3 flex items-center gap-2">
@@ -827,7 +827,7 @@ const Profile = () => {
         </Card>
       </div>
       
-      {/* Proof Viewer Dialog */}
+      {}
       <Dialog open={!!expandedProof} onOpenChange={(open) => !open && setExpandedProof(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh]">
           <DialogHeader>

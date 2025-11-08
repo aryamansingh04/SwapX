@@ -9,15 +9,11 @@ export interface Connection {
   updated_at?: string;
 }
 
-/**
- * Request a connection with a partner
- * @param partnerId - The ID of the user to connect with
- * @returns Created connection request
- * @throws Error if user is not authenticated, partner ID is invalid, or creation fails
- */
+
+
 export async function requestConnection(partnerId: string): Promise<Connection> {
   try {
-    // Get the current authenticated user
+    
     const {
       data: { user },
       error: userError,
@@ -39,7 +35,7 @@ export async function requestConnection(partnerId: string): Promise<Connection> 
       throw new Error("Cannot request a connection with yourself.");
     }
 
-    // Insert connection request
+    
     const { data, error } = await supabase
       .from("connections")
       .insert({
@@ -67,16 +63,11 @@ export async function requestConnection(partnerId: string): Promise<Connection> 
   }
 }
 
-/**
- * Accept a connection request
- * Only works if the current user is either the user_id or partner_id
- * @param id - The connection ID to accept
- * @returns Updated connection
- * @throws Error if user is not authenticated, not authorized, or update fails
- */
+
+
 export async function acceptConnection(id: number): Promise<Connection> {
   try {
-    // Get the current authenticated user
+    
     const {
       data: { user },
       error: userError,
@@ -90,7 +81,7 @@ export async function acceptConnection(id: number): Promise<Connection> {
       throw new Error("User is not authenticated. Please sign in first.");
     }
 
-    // First, verify that this connection involves the current user
+    
     const { data: connection, error: fetchError } = await supabase
       .from("connections")
       .select("*")
@@ -105,14 +96,14 @@ export async function acceptConnection(id: number): Promise<Connection> {
       throw new Error("Connection not found.");
     }
 
-    // Verify the user is authorized (must be either user_id or partner_id)
+    
     if (connection.user_id !== user.id && connection.partner_id !== user.id) {
       throw new Error(
         "Unauthorized: You can only accept connections that involve you."
       );
     }
 
-    // Update connection status to accepted
+    
     const { data, error } = await supabase
       .from("connections")
       .update({ status: "accepted" })
@@ -137,15 +128,11 @@ export async function acceptConnection(id: number): Promise<Connection> {
   }
 }
 
-/**
- * Get all connections for the current user
- * Returns connections where the user is either user_id or partner_id
- * @returns Array of connections ordered by created_at descending
- * @throws Error if user is not authenticated or query fails
- */
+
+
 export async function myConnections(): Promise<Connection[]> {
   try {
-    // Get the current authenticated user
+    
     const {
       data: { user },
       error: userError,
@@ -159,7 +146,7 @@ export async function myConnections(): Promise<Connection[]> {
       throw new Error("User is not authenticated. Please sign in first.");
     }
 
-    // Get connections where user is either user_id or partner_id
+    
     const { data, error } = await supabase
       .from("connections")
       .select("*")

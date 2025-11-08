@@ -62,7 +62,7 @@ interface GroupMessage {
     type: "image" | "video" | "file";
     name: string;
     size: string;
-    url?: string; // For image/video previews
+    url?: string; 
   };
 }
 
@@ -89,7 +89,7 @@ const GroupDetail = () => {
   const navigate = useNavigate();
   const { user: authStoreUser } = useAuthStore();
   const { user: supabaseUser } = useAuthUser();
-  // Use Supabase user first, fallback to auth store user
+  
   const user = supabaseUser || authStoreUser;
   const [group, setGroup] = useState<Group | null>(null);
   const [messageText, setMessageText] = useState("");
@@ -113,7 +113,7 @@ const GroupDetail = () => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Emoji options
+  
   const emojis = ["😀", "😂", "😍", "🥰", "😎", "🤔", "👍", "❤️", "🔥", "✨", "🎉", "💯"];
 
   useEffect(() => {
@@ -129,7 +129,7 @@ const GroupDetail = () => {
     const foundGroup = groups.find((g: Group) => g.id === id);
 
     if (foundGroup) {
-      // Convert message timestamps from strings to Date objects
+      
       const groupWithDates: Group = {
         ...foundGroup,
         messages: foundGroup.messages.map((msg: any) => ({
@@ -140,7 +140,7 @@ const GroupDetail = () => {
       };
       setGroup(groupWithDates);
     } else {
-      // Create default groups if they don't exist
+      
       const defaultGroups = createDefaultGroups();
       const defaultGroup = defaultGroups.find((g) => g.id === id);
       if (defaultGroup) {
@@ -302,7 +302,7 @@ const GroupDetail = () => {
 
   const saveGroups = (groups: Group[]) => {
     localStorage.setItem("groups", JSON.stringify(groups));
-    // Also update the groups list in the parent component
+    
     window.dispatchEvent(new Event("groupsUpdated"));
   };
 
@@ -319,7 +319,7 @@ const GroupDetail = () => {
       return;
     }
     
-    // Check if user is authenticated via Supabase or auth store
+    
     if (!supabaseUser && !authStoreUser) {
       toast.error("Please log in to send messages");
       setShowAnonymousDialog(false);
@@ -328,7 +328,7 @@ const GroupDetail = () => {
       return;
     }
 
-    // Handle file attachment
+    
     if (pendingFile) {
       const senderName = isAnonymous 
         ? "Anonymous" 
@@ -361,7 +361,7 @@ const GroupDetail = () => {
             timestamp: msg.timestamp.toISOString(),
             attachment: msg.attachment ? {
               ...msg.attachment,
-              url: undefined, // Blob URLs are session-only
+              url: undefined, 
             } : undefined,
           })),
           createdAt: updatedGroup.createdAt.toISOString(),
@@ -372,17 +372,17 @@ const GroupDetail = () => {
       setGroup(updatedGroup);
       setPendingFile(null);
       setShowAnonymousDialog(false);
-      setSendAsAnonymous(null); // Reset preference after sending
+      setSendAsAnonymous(null); 
       toast.success("File attachment sent");
       
-      // Scroll to bottom after sending
+      
       setTimeout(() => {
         scrollToBottom();
       }, 100);
       return;
     }
 
-    // Handle text message
+    
     if (!pendingMessage.trim()) return;
 
     const senderName = isAnonymous 
@@ -408,7 +408,7 @@ const GroupDetail = () => {
     const groups = JSON.parse(localStorage.getItem("groups") || "[]");
     const groupIndex = groups.findIndex((g: any) => g.id === group.id);
     if (groupIndex !== -1) {
-      // Convert dates to ISO strings for storage
+      
       groups[groupIndex] = {
         ...updatedGroup,
         messages: updatedGroup.messages.map((msg) => ({
@@ -433,12 +433,12 @@ const GroupDetail = () => {
     setPendingMessage("");
     setShowEmojiPicker(false);
     setShowAnonymousDialog(false);
-    setSendAsAnonymous(null); // Reset preference after sending
+    setSendAsAnonymous(null); 
     
-    // Dispatch event to update groups list
+    
     window.dispatchEvent(new Event("groupsUpdated"));
     
-    // Scroll to bottom after sending
+    
     setTimeout(() => {
       scrollToBottom();
     }, 100);
@@ -455,13 +455,13 @@ const GroupDetail = () => {
       return;
     }
     
-    // Check if user is authenticated via Supabase or auth store
+    
     if (!supabaseUser && !authStoreUser) {
       toast.error("Please log in to send messages");
       return;
     }
     
-    // Always show dialog to ask (as per user requirement)
+    
     setPendingMessage(messageText);
     setShowAnonymousDialog(true);
   };
@@ -495,7 +495,7 @@ const GroupDetail = () => {
     }
 
     const file = files[0];
-    const maxSize = 10 * 1024 * 1024; // 10MB
+    const maxSize = 10 * 1024 * 1024; 
 
     if (file.size > maxSize) {
       toast.error("File size should be less than 10MB");
@@ -503,11 +503,11 @@ const GroupDetail = () => {
       return;
     }
 
-    // Determine file type
+    
     const isImage = file.type.startsWith("image/");
     const isVideo = file.type.startsWith("video/");
     
-    // Determine file type icon/emoji
+    
     const fileType = isImage ? "📷 Image" : 
                      isVideo ? "🎥 Video" :
                      file.type.includes("pdf") ? "📄 PDF" :
@@ -522,7 +522,7 @@ const GroupDetail = () => {
         ? `${(file.size / 1024).toFixed(2)} KB` 
         : `${(file.size / (1024 * 1024)).toFixed(2)} MB`;
     
-    // Create file URL for preview (images and videos)
+    
     let fileUrl: string | undefined;
     if (isImage || isVideo) {
       fileUrl = URL.createObjectURL(file);
@@ -530,7 +530,7 @@ const GroupDetail = () => {
     
     const fileMessage = `${fileType}: ${file.name} (${fileSize})`;
     
-    // Store file info and show anonymous dialog
+    
     setPendingFile({
       file,
       fileMessage,
@@ -544,7 +544,7 @@ const GroupDetail = () => {
     });
     setShowAnonymousDialog(true);
     
-    // Reset file input
+    
     e.target.value = "";
   };
 
@@ -676,7 +676,7 @@ const GroupDetail = () => {
   return (
     <Layout>
       <div className="flex h-[calc(100vh-4rem)] flex-col">
-        {/* Header */}
+        {}
         <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="flex h-16 items-center px-4 gap-3">
             <Button
@@ -713,7 +713,7 @@ const GroupDetail = () => {
           </div>
         </div>
 
-        {/* Messages Area */}
+        {}
         <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
           <div className="space-y-4">
             {groupedMessages.map((group, groupIndex) => (
@@ -729,7 +729,7 @@ const GroupDetail = () => {
                     group.messages[index - 1].senderId !== message.senderId ||
                     new Date(message.timestamp).getTime() -
                       new Date(group.messages[index - 1].timestamp).getTime() >
-                      5 * 60 * 1000; // 5 minutes
+                      5 * 60 * 1000; 
 
                   return (
                     <div
@@ -772,7 +772,7 @@ const GroupDetail = () => {
                               : "bg-muted rounded-tl-sm"
                           }`}
                         >
-                          {/* Show image/video preview if attachment exists */}
+                          {}
                           {message.attachment?.type === "image" && message.attachment.url && (
                             <div className="mb-2 rounded-lg overflow-hidden max-w-sm">
                               <img
@@ -822,9 +822,9 @@ const GroupDetail = () => {
           </div>
         </ScrollArea>
 
-        {/* Message Input */}
+        {}
         <div className="border-t bg-background p-3">
-          {/* Hidden file input */}
+          {}
           <input
             ref={fileInputRef}
             type="file"
@@ -883,12 +883,12 @@ const GroupDetail = () => {
           </div>
         </div>
 
-      {/* Anonymous/Name Dialog */}
+      {}
       <AlertDialog 
         open={showAnonymousDialog} 
         onOpenChange={(open) => {
           if (!open) {
-            // When dialog closes, clear pending state if not sent
+            
             setPendingMessage("");
             setPendingFile(null);
           }
@@ -938,7 +938,7 @@ const GroupDetail = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Message Context Menu */}
+      {}
       {selectedMessage && (
           <div className="fixed inset-0 z-50" onClick={() => setSelectedMessage(null)}>
             <div

@@ -27,8 +27,8 @@ interface Notification {
   isRead: boolean;
   timestamp: Date;
   link?: string;
-  userId?: string; // For connection requests
-  chatId?: string; // For messages
+  userId?: string; 
+  chatId?: string; 
 }
 
 const Layout = ({ children }: LayoutProps) => {
@@ -38,7 +38,7 @@ const Layout = ({ children }: LayoutProps) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  // Load notifications from localStorage
+  
   useEffect(() => {
     const loadNotifications = () => {
       const saved = localStorage.getItem("notifications");
@@ -52,7 +52,7 @@ const Layout = ({ children }: LayoutProps) => {
             }))
           );
         } catch {
-          // Initialize with default notifications if none exist
+          
           const defaultNotifications: Notification[] = [
             {
               id: "1",
@@ -86,7 +86,7 @@ const Layout = ({ children }: LayoutProps) => {
           localStorage.setItem("notifications", JSON.stringify(defaultNotifications));
         }
       } else {
-        // Initialize with default notifications
+        
         const defaultNotifications: Notification[] = [
           {
             id: "1",
@@ -123,12 +123,12 @@ const Layout = ({ children }: LayoutProps) => {
 
     loadNotifications();
 
-    // Listen for notification updates and connection request updates
+    
     const handleNotificationUpdate = () => {
       loadNotifications();
     };
     const handleConnectionUpdate = () => {
-      // When connection requests change, check for new received requests and create notifications
+      
       const connectionRequestsReceived = JSON.parse(
         localStorage.getItem("connectionRequestsReceived") || "[]"
       );
@@ -139,7 +139,7 @@ const Layout = ({ children }: LayoutProps) => {
           .map((n: any) => n.userId)
       );
 
-      // Create notifications for new received connection requests
+      
       connectionRequestsReceived.forEach((request: any) => {
         const userId = request.userId || request.id;
         if (!existingRequestIds.has(userId)) {
@@ -158,28 +158,28 @@ const Layout = ({ children }: LayoutProps) => {
         }
       });
 
-      // Keep only last 50 notifications
+      
       const limitedNotifications = savedNotifications.slice(0, 50);
       localStorage.setItem("notifications", JSON.stringify(limitedNotifications));
       loadNotifications();
     };
     const handleChatsUpdate = () => {
-      // When chats are updated, check for new messages and create notifications
+      
       const savedChats = JSON.parse(localStorage.getItem("chats") || "[]");
       const savedNotifications = JSON.parse(localStorage.getItem("notifications") || "[]");
       const currentPath = window.location.pathname;
       const isOnChatPage = currentPath.startsWith("/chat/");
       const currentChatId = isOnChatPage ? currentPath.split("/chat/")[1] : null;
 
-      // Check each chat for new messages
+      
       savedChats.forEach((chat: any) => {
         if (chat.messages && chat.messages.length > 0) {
           const lastMessage = chat.messages[chat.messages.length - 1];
-          // Only create notification if:
-          // 1. Message is not from current user
-          // 2. Chat is not currently open
-          // 3. Chat is not muted
-          // 4. Chat is not archived
+          
+          
+          
+          
+          
           if (
             !lastMessage.isOwn &&
             chat.id !== currentChatId &&
@@ -187,13 +187,13 @@ const Layout = ({ children }: LayoutProps) => {
             !chat.isArchived &&
             chat.connectionStatus === "connected"
           ) {
-            // Check if we already have a recent notification for this chat
+            
             const recentNotification = savedNotifications.find(
               (n: any) =>
                 n.type === "message" &&
                 n.chatId === chat.id &&
                 new Date(n.timestamp).getTime() >
-                  new Date(lastMessage.timestamp).getTime() - 60000 // Within last minute
+                  new Date(lastMessage.timestamp).getTime() - 60000 
             );
 
             if (!recentNotification) {
@@ -217,7 +217,7 @@ const Layout = ({ children }: LayoutProps) => {
         }
       });
 
-      // Keep only last 50 notifications
+      
       const limitedNotifications = savedNotifications.slice(0, 50);
       localStorage.setItem("notifications", JSON.stringify(limitedNotifications));
       loadNotifications();
@@ -236,12 +236,12 @@ const Layout = ({ children }: LayoutProps) => {
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const handleNotificationClick = (notification: Notification) => {
-    // Mark as read
+    
     const updated = notifications.map((n) =>
       n.id === notification.id ? { ...n, isRead: true } : n
     );
     
-    // If it's a message notification, mark all message notifications from that chat as read
+    
     if (notification.type === "message" && notification.chatId) {
       const fullyUpdated = updated.map((n) =>
         n.type === "message" && n.chatId === notification.chatId
@@ -251,7 +251,7 @@ const Layout = ({ children }: LayoutProps) => {
       setNotifications(fullyUpdated);
       localStorage.setItem("notifications", JSON.stringify(fullyUpdated));
     } else if (notification.type === "connection" && notification.userId) {
-      // If it's a connection request notification, mark all connection notifications for that user as read
+      
       const fullyUpdated = updated.map((n) =>
         n.type === "connection" && n.userId === notification.userId
           ? { ...n, isRead: true }
@@ -266,7 +266,7 @@ const Layout = ({ children }: LayoutProps) => {
     
     window.dispatchEvent(new Event("notificationsUpdated"));
 
-    // Navigate if link exists
+    
     if (notification.link) {
       navigate(notification.link);
     }
@@ -320,7 +320,7 @@ const Layout = ({ children }: LayoutProps) => {
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          {/* Logo */}
+          {}
           <div className="flex items-center gap-2">
             <button
               onClick={() => navigate("/home")}
@@ -331,7 +331,7 @@ const Layout = ({ children }: LayoutProps) => {
             </button>
           </div>
 
-          {/* Desktop Navigation */}
+          {}
           <nav className="hidden md:flex items-center gap-2" role="navigation" aria-label="Main navigation">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -351,11 +351,11 @@ const Layout = ({ children }: LayoutProps) => {
             })}
           </nav>
 
-          {/* Right side: Theme Toggle, Notifications, Profile Menu */}
+          {}
           <div className="flex items-center gap-2">
             <ThemeToggle />
             
-            {/* Notifications Dropdown */}
+            {}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -423,7 +423,7 @@ const Layout = ({ children }: LayoutProps) => {
               </DropdownMenuContent>
             </DropdownMenu>
             
-            {/* Desktop Profile Menu */}
+            {}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -445,7 +445,7 @@ const Layout = ({ children }: LayoutProps) => {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={async () => {
-                    // Always navigate to /profile which will show current user's profile
+                    
                     handleNavigate("/profile");
                   }}
                   role="menuitem"
@@ -481,7 +481,7 @@ const Layout = ({ children }: LayoutProps) => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Mobile Menu Button */}
+            {}
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
                 <Button
@@ -517,8 +517,8 @@ const Layout = ({ children }: LayoutProps) => {
                       variant="ghost"
                       className="w-full justify-start relative"
                       onClick={() => {
-                        // Toggle notifications dropdown in mobile would require different approach
-                        // For now, just navigate to dashboard where notifications can be viewed
+                        
+                        
                         handleNavigate("/dashboard");
                       }}
                     >
@@ -534,7 +534,7 @@ const Layout = ({ children }: LayoutProps) => {
                       variant="ghost"
                       className="w-full justify-start"
                       onClick={() => {
-                        // Always navigate to /profile which will show current user's profile
+                        
                         handleNavigate("/profile");
                       }}
                     >

@@ -27,7 +27,7 @@ const AuthGate = ({ children }: AuthGateProps) => {
         } else {
           setAuthenticated(false);
           setLoading(false);
-          // Only navigate if we're not already on the landing page
+          
           if (window.location.pathname !== "/") {
             navigate("/");
           }
@@ -45,7 +45,7 @@ const AuthGate = ({ children }: AuthGateProps) => {
 
     checkAuth();
 
-    // Subscribe to auth state changes
+    
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -57,7 +57,7 @@ const AuthGate = ({ children }: AuthGateProps) => {
       } else {
         setAuthenticated(false);
         setLoading(false);
-        // Only navigate if we're not already on the landing page
+        
         if (window.location.pathname !== "/") {
           navigate("/");
         }

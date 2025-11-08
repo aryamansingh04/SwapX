@@ -25,12 +25,12 @@ const Rating = () => {
   const [searchParams] = useSearchParams();
   const { user } = useAuthStore();
   
-  // Get attendee info from URL params or mock data
+  
   const attendeeId = searchParams.get("attendeeId") || "1";
   const attendeeName = searchParams.get("attendeeName") || "Sarah Johnson";
   const attendeeAvatar = searchParams.get("attendeeAvatar") || "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah";
   
-  // Mock attendee data - in real app, fetch from API using sessionId and attendeeId
+  
   const [otherAttendee] = useState<OtherAttendee>({
     id: attendeeId,
     name: attendeeName,
@@ -46,11 +46,11 @@ const Rating = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   useEffect(() => {
-    // In a real app, check if user has already submitted rating for this session
-    // const hasRated = checkIfRated(sessionId);
-    // if (hasRated) {
-    //   setIsSubmitted(true);
-    // }
+    
+    
+    
+    
+    
   }, [sessionId]);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -60,19 +60,19 @@ const Rating = () => {
       return;
     }
 
-    // In a real app, submit rating to API
-    // await submitRating({
-    //   sessionId,
-    //   attendeeId: otherAttendee.id,
-    //   rating,
-    //   feedback,
-    // });
+    
+    
+    
+    
+    
+    
+    
 
     setIsSubmitted(true);
     toast.success("Rating submitted! Your feedback helps build trust in the community.");
     
-    // In a real app, the other attendee will also rate you independently
-    // This is just your rating of them
+    
+    
     setTimeout(() => {
       navigate("/dashboard");
     }, 3000);
@@ -120,7 +120,7 @@ const Rating = () => {
         </div>
 
         <div className="grid md:grid-cols-2 gap-6 mb-6">
-          {/* Your Info */}
+          {}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
@@ -145,7 +145,7 @@ const Rating = () => {
             </CardContent>
           </Card>
 
-          {/* Other Attendee Info */}
+          {}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Session Partner</CardTitle>

@@ -37,10 +37,10 @@ const Signup = () => {
       return;
     }
     
-    // Generate unique user ID from email
+    
     const userId = generateUserIdFromEmail(email);
     
-    // Check if user already exists
+    
     const existingProfile = getProfile(userId);
     if (existingProfile) {
       toast.error("An account with this email already exists. Please login instead.");
@@ -49,9 +49,9 @@ const Signup = () => {
     
     setIsLoading(true);
     
-    // Mock authentication - replace with actual API call
+    
     setTimeout(() => {
-      // Create initial profile entry
+      
       const normalizedEmail = email.toLowerCase().trim();
       setProfile({
         id: userId,

@@ -13,17 +13,14 @@ interface UseMessagesReturn {
   error: string | null;
 }
 
-/**
- * React hook for managing messages in a connection with real-time updates
- * @param connectionId - The connection ID to load messages for
- * @returns Object with messages array, sendMessage function, loading state, and error
- */
+
+
 export function useMessages({ connectionId }: UseMessagesOptions): UseMessagesReturn {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load initial messages
+  
   useEffect(() => {
     let mounted = true;
 
@@ -61,7 +58,7 @@ export function useMessages({ connectionId }: UseMessagesOptions): UseMessagesRe
     };
   }, [connectionId]);
 
-  // Subscribe to real-time message updates
+  
   useEffect(() => {
     if (!connectionId || connectionId <= 0) {
       return;
@@ -81,7 +78,7 @@ export function useMessages({ connectionId }: UseMessagesOptions): UseMessagesRe
         (payload) => {
           const newMessage = payload.new as Message;
           setMessages((prevMessages) => {
-            // Check if message already exists to avoid duplicates
+            
             const exists = prevMessages.some((msg) => msg.id === newMessage.id);
             if (exists) {
               return prevMessages;
@@ -97,7 +94,7 @@ export function useMessages({ connectionId }: UseMessagesOptions): UseMessagesRe
     };
   }, [connectionId]);
 
-  // Send message function
+  
   const sendMessage = useCallback(
     async (content: string): Promise<Message> => {
       if (!connectionId || connectionId <= 0) {
@@ -112,8 +109,8 @@ export function useMessages({ connectionId }: UseMessagesOptions): UseMessagesRe
         setError(null);
         const newMessage = await sendMessageAPI(connectionId, content);
         
-        // The real-time subscription will handle adding the message,
-        // but we can also update state immediately for better UX
+        
+        
         setMessages((prevMessages) => {
           const exists = prevMessages.some((msg) => msg.id === newMessage.id);
           if (exists) {

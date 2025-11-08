@@ -40,7 +40,7 @@ const ProfileModal = ({ user, isOpen, onClose }: ProfileModalProps) => {
   if (!user) return null;
 
   const handleConnect = () => {
-    // Load existing connection requests
+    
     const connectionRequestsSent = JSON.parse(
       localStorage.getItem("connectionRequestsSent") || "[]"
     );
@@ -51,7 +51,7 @@ const ProfileModal = ({ user, isOpen, onClose }: ProfileModalProps) => {
       localStorage.getItem("connections") || "[]"
     );
 
-    // Check if already connected
+    
     if (connections.includes(user.id)) {
       toast.info("You are already connected with this user");
       navigate(`/chat/${user.id}`);
@@ -59,7 +59,7 @@ const ProfileModal = ({ user, isOpen, onClose }: ProfileModalProps) => {
       return;
     }
 
-    // Check if request already sent
+    
     if (connectionRequestsSent.some((r: any) => r.userId === user.id)) {
       toast.info("Connection request already sent");
       navigate(`/chat/${user.id}`);
@@ -67,7 +67,7 @@ const ProfileModal = ({ user, isOpen, onClose }: ProfileModalProps) => {
       return;
     }
 
-    // Add to sent requests
+    
     const newRequest = {
       id: Date.now().toString(),
       userId: user.id,
@@ -80,7 +80,7 @@ const ProfileModal = ({ user, isOpen, onClose }: ProfileModalProps) => {
     connectionRequestsSent.push(newRequest);
     localStorage.setItem("connectionRequestsSent", JSON.stringify(connectionRequestsSent));
 
-    // Create a notification for the connection request
+    
     const notifications = JSON.parse(localStorage.getItem("notifications") || "[]");
     const newNotification = {
       id: Date.now().toString(),
@@ -92,11 +92,11 @@ const ProfileModal = ({ user, isOpen, onClose }: ProfileModalProps) => {
       link: `/chat/${user.id}`,
     };
     notifications.unshift(newNotification);
-    // Keep only last 50 notifications
+    
     const limitedNotifications = notifications.slice(0, 50);
     localStorage.setItem("notifications", JSON.stringify(limitedNotifications));
 
-    // Trigger update events
+    
     window.dispatchEvent(new Event("connectionRequestsUpdated"));
     window.dispatchEvent(new Event("chatsUpdated"));
     window.dispatchEvent(new Event("notificationsUpdated"));
@@ -109,16 +109,16 @@ const ProfileModal = ({ user, isOpen, onClose }: ProfileModalProps) => {
   };
 
   const handleProofClick = (proofUrl: string, skill: string) => {
-    // Navigate to proof viewer page with the PDF URL as query parameter
+    
     const params = new URLSearchParams({
       url: proofUrl,
       skill: skill,
     });
     navigate(`/proof?${params.toString()}`);
-    onClose(); // Close the modal when navigating
+    onClose(); 
   };
 
-  // Filter to show only PDF proofs
+  
   const pdfProofs = user.proofs.filter(proof => proof.type === "pdf");
 
   return (

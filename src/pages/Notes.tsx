@@ -47,12 +47,12 @@ const Notes = () => {
   const [newNoteTag, setNewNoteTag] = useState("");
   const [newNoteTags, setNewNoteTags] = useState<string[]>([]);
 
-  // Load notes from localStorage and merge with mock data
+  
   const [notes, setNotes] = useState<Note[]>(() => {
-    // Get bookmarked note IDs
+    
     const bookmarkedIds = JSON.parse(localStorage.getItem("bookmarkedNotes") || "[]");
     
-    // Get saved user notes from localStorage
+    
     const savedNotes = localStorage.getItem("userNotes");
     let userNotes: Note[] = [];
     if (savedNotes) {
@@ -69,7 +69,7 @@ const Notes = () => {
       }
     }
 
-    // Mock community notes data
+    
     const mockNotes: Note[] = [
     {
       id: "1",
@@ -169,7 +169,7 @@ const Notes = () => {
     },
     ];
 
-    // Merge user notes with mock notes, avoiding duplicates
+    
     const allNotes = [...userNotes];
     mockNotes.forEach((mockNote) => {
       if (!allNotes.find((n) => n.id === mockNote.id)) {
@@ -179,7 +179,7 @@ const Notes = () => {
     return allNotes;
   });
 
-  // Save notes to localStorage whenever notes change
+  
   useEffect(() => {
     const userCreatedNotes = notes.filter(note => note.author.id === user?.id);
     if (userCreatedNotes.length > 0) {
@@ -187,7 +187,7 @@ const Notes = () => {
     }
   }, [notes, user?.id]);
 
-  // Update bookmark status when bookmarks change
+  
   useEffect(() => {
     const handleBookmarkUpdate = () => {
       const bookmarkedIds = JSON.parse(localStorage.getItem("bookmarkedNotes") || "[]");
@@ -288,7 +288,7 @@ const Notes = () => {
     setNotes([newNote, ...notes]);
     toast.success("Note shared successfully!");
     
-    // Reset form
+    
     setNewNoteTitle("");
     setNewNoteContent("");
     setNewNoteTags([]);

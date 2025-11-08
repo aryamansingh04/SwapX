@@ -64,7 +64,7 @@ const AvailabilitySettings = () => {
   const { user } = useAuthStore();
   const { getProfile, updateProfile, setProfile } = useProfileStore();
 
-  // Get user's timezone (default to browser timezone)
+  
   const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   
   const existingProfile = user ? getProfile(user.id) : null;
@@ -74,7 +74,7 @@ const AvailabilitySettings = () => {
     if (existingAvailability) {
       return existingAvailability;
     }
-    // Default: Monday-Friday, 9 AM - 5 PM
+    
     const defaultAvailability: WeeklyAvailability = {
       monday: { enabled: true, slots: [DEFAULT_TIME_SLOT] },
       tuesday: { enabled: true, slots: [DEFAULT_TIME_SLOT] },
@@ -153,7 +153,7 @@ const AvailabilitySettings = () => {
       return;
     }
 
-    // Validate time slots
+    
     for (const day of DAYS) {
       const dayAvailability = availability[day.key as keyof WeeklyAvailability] as DayAvailability;
       if (dayAvailability.enabled) {
@@ -166,13 +166,13 @@ const AvailabilitySettings = () => {
       }
     }
 
-    // Update profile with availability
+    
     if (existingProfile) {
       updateProfile(user.id, {
         availability: availability as any,
       });
     } else {
-      // Create new profile with availability
+      
       setProfile({
         id: user.id,
         email: user.email,
@@ -208,7 +208,7 @@ const AvailabilitySettings = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Timezone Selection */}
+            {}
             <div className="space-y-2">
               <Label htmlFor="timezone">Timezone</Label>
               <Select
@@ -230,7 +230,7 @@ const AvailabilitySettings = () => {
               </Select>
             </div>
 
-            {/* Weekly Schedule */}
+            {}
             <div className="space-y-4">
               <Label className="text-base font-semibold">Weekly Schedule</Label>
               {DAYS.map((day) => {
@@ -318,7 +318,7 @@ const AvailabilitySettings = () => {
               })}
             </div>
 
-            {/* Action Buttons */}
+            {}
             <div className="flex gap-3 pt-4">
               <Button variant="outline" onClick={() => navigate("/profile")} className="flex-1">
                 Cancel

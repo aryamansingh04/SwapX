@@ -77,7 +77,7 @@ const GroupMembers = () => {
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8 max-w-4xl">
-        {/* Header */}
+        {}
         <div className="mb-6 flex items-center gap-4">
           <Button
             variant="ghost"
@@ -92,7 +92,7 @@ const GroupMembers = () => {
           </div>
         </div>
 
-        {/* Search */}
+        {}
         <div className="mb-6">
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -105,7 +105,7 @@ const GroupMembers = () => {
           </div>
         </div>
 
-        {/* Stats */}
+        {}
         <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="pb-3">
@@ -139,9 +139,9 @@ const GroupMembers = () => {
           </Card>
         </div>
 
-        {/* Members List */}
+        {}
         <div className="space-y-6">
-          {/* Admins */}
+          {}
           {admins.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-4">
@@ -190,7 +190,7 @@ const GroupMembers = () => {
             </div>
           )}
 
-          {/* Regular Members */}
+          {}
           {members.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-4">
@@ -239,7 +239,7 @@ const GroupMembers = () => {
             </div>
           )}
 
-          {/* No Members Found */}
+          {}
           {filteredMembers.length === 0 && (
             <Card>
               <CardContent className="py-12 text-center">

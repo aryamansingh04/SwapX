@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Home, MessageSquare, BarChart3, Upload, User, Menu, X, Users, Video, FileText, Newspaper, Settings, MessageCircle, Bookmark, Bell } from "lucide-react";
+import { Home, MessageSquare, BarChart3, Upload, User, Menu, X, Users, Video, FileText, Newspaper, Settings, MessageCircle, Bookmark, Bell, HelpCircle, Info, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -462,6 +462,19 @@ const Layout = ({ children }: LayoutProps) => {
                   <Settings className="h-4 w-4 mr-2" aria-hidden="true" />
                   Connection Settings
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleNavigate("/availability")} role="menuitem">
+                  <Clock className="h-4 w-4 mr-2" aria-hidden="true" />
+                  Availability Settings
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => handleNavigate("/faq")} role="menuitem">
+                  <HelpCircle className="h-4 w-4 mr-2" aria-hidden="true" />
+                  FAQ
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleNavigate("/about-us")} role="menuitem">
+                  <Info className="h-4 w-4 mr-2" aria-hidden="true" />
+                  About Us
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} role="menuitem">
                   Sign out
@@ -549,6 +562,22 @@ const Layout = ({ children }: LayoutProps) => {
                     >
                       <Settings className="h-4 w-4 mr-2" aria-hidden="true" />
                       Connection Settings
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start"
+                      onClick={() => handleNavigate("/faq")}
+                    >
+                      <HelpCircle className="h-4 w-4 mr-2" aria-hidden="true" />
+                      FAQ
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start"
+                      onClick={() => handleNavigate("/about-us")}
+                    >
+                      <Info className="h-4 w-4 mr-2" aria-hidden="true" />
+                      About Us
                     </Button>
                     <Button
                       variant="ghost"

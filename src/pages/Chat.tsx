@@ -8,7 +8,6 @@ import {
   MessageCircle,
   Phone,
   Plus,
-  Lock,
   PhoneIncoming,
   PhoneOutgoing,
   PhoneMissed,
@@ -1994,20 +1993,10 @@ const Chat = () => {
           /* Empty State */
           <div className="flex-1 flex items-center justify-center bg-muted/10">
             <div className="text-center">
-              <div className="mb-6 flex justify-center">
-                <div className="relative">
-                  <MessageCircle className="h-32 w-32 text-muted-foreground/20" />
-                  <Phone className="h-16 w-16 text-muted-foreground/30 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                </div>
-              </div>
               <h2 className="text-2xl font-semibold text-muted-foreground mb-2">SwapX Chat</h2>
-              <p className="text-sm text-muted-foreground mb-4">
+              <p className="text-sm text-muted-foreground">
                 Select a chat to start messaging
               </p>
-              <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
-                <Lock className="h-3 w-3" />
-                <span>End-to-end encrypted</span>
-              </div>
             </div>
           </div>
         )}

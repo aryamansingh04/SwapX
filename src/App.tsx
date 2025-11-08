@@ -27,11 +27,14 @@ import NoteDetail from "./pages/NoteDetail";
 import MyNotes from "./pages/MyNotes";
 import SavedNotes from "./pages/SavedNotes";
 import ConnectionSettings from "./pages/ConnectionSettings";
+import AvailabilitySettings from "./pages/AvailabilitySettings";
 import GroupDiscussion from "./pages/GroupDiscussion";
 import GroupDetail from "./pages/GroupDetail";
 import GroupMembers from "./pages/GroupMembers";
 import News from "./pages/News";
 import NewsDetail from "./pages/NewsDetail";
+import FAQ from "./pages/FAQ";
+import AboutUs from "./pages/AboutUs";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -165,6 +168,14 @@ const App = () => (
               }
             />
             <Route
+              path="/availability"
+              element={
+                <ProtectedRoute>
+                  <AvailabilitySettings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/groups"
               element={
                 <ProtectedRoute>
@@ -225,6 +236,22 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Rating />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/faq"
+              element={
+                <ProtectedRoute>
+                  <FAQ />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/about-us"
+              element={
+                <ProtectedRoute>
+                  <AboutUs />
                 </ProtectedRoute>
               }
             />

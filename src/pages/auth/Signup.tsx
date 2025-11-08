@@ -5,10 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useProfileStore } from "@/stores/useProfileStore";
+import { generateUserIdFromEmail, isValidEmail } from "@/lib/auth";
+import { toast } from "sonner";
 
 const Signup = () => {
   const navigate = useNavigate();
   const { setUser } = useAuthStore();
+  const { getProfile, setProfile } = useProfileStore();
   const [isLoading, setIsLoading] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -18,8 +22,28 @@ const Signup = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!isValidEmail(email)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+    
     if (password !== confirmPassword) {
-      alert("Passwords do not match");
+      toast.error("Passwords do not match");
+      return;
+    }
+    
+    if (password.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+    
+    // Generate unique user ID from email
+    const userId = generateUserIdFromEmail(email);
+    
+    // Check if user already exists
+    const existingProfile = getProfile(userId);
+    if (existingProfile) {
+      toast.error("An account with this email already exists. Please login instead.");
       return;
     }
     
@@ -27,12 +51,26 @@ const Signup = () => {
     
     // Mock authentication - replace with actual API call
     setTimeout(() => {
-      setUser({
-        id: "1",
-        email,
-        name,
+      // Create initial profile entry
+      const normalizedEmail = email.toLowerCase().trim();
+      setProfile({
+        id: userId,
+        email: normalizedEmail,
+        name: name.trim(),
+        skills: [],
+        skillsToLearn: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       });
+      
+      setUser({
+        id: userId,
+        email: normalizedEmail,
+        name: name.trim(),
+      });
+      
       setIsLoading(false);
+      toast.success("Account created successfully! Please complete your profile.");
       navigate("/profile/setup");
     }, 1000);
   };

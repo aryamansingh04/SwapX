@@ -30,13 +30,11 @@ A modern peer learning platform built with React, TypeScript, and Vite. SwapX en
    npm install
    ```
 
-3. **Set up environment variables**
+3. **Set up environment variables (optional)**
    
-   Create a `.env` file in the root directory:
+   Create a `.env` file in the root directory if needed:
    ```env
    VITE_API_URL=http://localhost:3000/api
-   VITE_SUPABASE_URL=your_supabase_url
-   VITE_SUPABASE_KEY=your_supabase_anon_key
    VITE_JITSI_DOMAIN=meet.jit.si
    ```
 
@@ -132,12 +130,14 @@ src/
 - `/groups/:id` - Group chat interface
 - `/groups/:id/members` - Group members view
 - `/connection-settings` - Connection and privacy settings
+- `/availability` - Set and manage your weekly availability
 
 ## 🎯 Features
 
 ### Core Features
 - ✅ User authentication and authorization
 - ✅ Profile management with skills, occupation, and avatar selection
+- ✅ Availability management - Set weekly schedule with multiple time slots
 - ✅ Skill proofing (PDF uploads)
 - ✅ WhatsApp-style chat interface with message status, typing indicators
 - ✅ Meeting scheduling (online/offline) with Jitsi integration
@@ -164,6 +164,7 @@ src/
 
 ### Settings & Preferences
 - ✅ Connection Settings with privacy controls
+- ✅ Availability Settings - Set weekly schedule with time slots
 - ✅ Notification preferences
 - ✅ Communication preferences
 - ✅ Theme toggle (light/dark mode)
@@ -218,15 +219,14 @@ Authentication is handled via Zustand store with localStorage persistence:
 - Profile
 - Your Notes
 - Connection Settings
+- Availability Settings
 - Sign out
 
 ## 🌐 Environment Variables
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `VITE_API_URL` | Backend API URL | Yes |
-| `VITE_SUPABASE_URL` | Supabase project URL | Optional |
-| `VITE_SUPABASE_KEY` | Supabase anonymous key | Optional |
+| `VITE_API_URL` | Backend API URL | Optional |
 | `VITE_JITSI_DOMAIN` | Jitsi Meet domain | Optional |
 
 ## 🔄 State Management
@@ -281,6 +281,15 @@ Authentication is handled via Zustand store with localStorage persistence:
 - Full note detail view
 - Search and filter (coming soon)
 
+## 🕒 Availability Management
+
+- **Weekly Schedule**: Set availability for each day of the week
+- **Multiple Time Slots**: Add multiple time ranges per day
+- **Timezone Support**: Select your timezone for accurate scheduling
+- **Profile Display**: Availability shown on your profile for others to see
+- **Easy Editing**: Update availability from profile or settings menu
+- **Visual Display**: Clean, organized view of available times
+
 ## 🎭 UI Components
 
 Built with ShadCN UI components:
@@ -315,9 +324,11 @@ The app is built mobile-first and fully responsive:
 ## 🗄️ Data Persistence
 
 - **Authentication**: Zustand store with localStorage
+- **User Profiles**: localStorage (profile data including skills, occupation, availability)
 - **User Notes**: localStorage
 - **Group Discussions**: localStorage (groups, messages, members)
 - **Connection Settings**: localStorage
+- **Availability Settings**: localStorage (weekly schedule with time slots)
 - **Theme Preference**: localStorage
 - **Chats**: localStorage (messages, connection status, unread counts)
 - **Connection Requests**: localStorage (sent and received requests)

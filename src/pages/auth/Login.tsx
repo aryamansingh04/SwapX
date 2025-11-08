@@ -5,28 +5,71 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useProfileStore } from "@/stores/useProfileStore";
+import { generateUserIdFromEmail, isValidEmail } from "@/lib/auth";
+import { toast } from "sonner";
 
 const Login = () => {
   const navigate = useNavigate();
   const { setUser } = useAuthStore();
+  const { getProfile, setProfile } = useProfileStore();
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!isValidEmail(email)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+    
     setIsLoading(true);
     
     // Mock authentication - replace with actual API call
     setTimeout(() => {
-      setUser({
-        id: "1",
-        email,
-        name: email.split("@")[0],
-      });
-      setIsLoading(false);
-      // Redirect to profile setup after login
-      navigate("/profile/setup");
+      // Generate unique user ID from email
+      const userId = generateUserIdFromEmail(email);
+      
+      // Check if profile already exists
+      const existingProfile = getProfile(userId);
+      
+      if (existingProfile) {
+        // User exists - restore their profile data
+        setUser({
+          id: existingProfile.id,
+          email: existingProfile.email,
+          name: existingProfile.name,
+          avatar: existingProfile.avatar,
+        });
+        setIsLoading(false);
+        toast.success(`Welcome back, ${existingProfile.name}!`);
+        navigate("/home");
+      } else {
+        // New user - create basic profile and redirect to setup
+        const newUser = {
+          id: userId,
+          email: email.toLowerCase().trim(),
+          name: email.split("@")[0],
+        };
+        
+        // Create initial profile entry
+        setProfile({
+          id: userId,
+          email: email.toLowerCase().trim(),
+          name: email.split("@")[0],
+          skills: [],
+          skillsToLearn: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+        
+        setUser(newUser);
+        setIsLoading(false);
+        toast.success("Login successful! Please complete your profile.");
+        navigate("/profile/setup");
+      }
     }, 1000);
   };
 
